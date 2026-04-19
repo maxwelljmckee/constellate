@@ -1,20 +1,24 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { VoiceScreen } from './src/screens/VoiceScreen';
+
+import './src/nativewind/global.css';
+
+type Screen = 'home' | 'voice';
 
 export default function App() {
+  const [screen, setScreen] = useState<Screen>('home');
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <StatusBar style="light" />
+      {screen === 'home' ? (
+        <HomeScreen onGoLive={() => setScreen('voice')} />
+      ) : (
+        <VoiceScreen onExit={() => setScreen('home')} />
+      )}
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
