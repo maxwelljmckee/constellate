@@ -4,6 +4,8 @@ import {
   Modality,
   StartSensitivity,
 } from "@google/genai";
+
+export type TranscriptEntry = { role: "user" | "model"; text: string };
 import {
   AudioContext,
   AudioManager,
@@ -30,6 +32,8 @@ const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 export function useGeminiLive() {
   const [isConnected, setIsConnected] = useState(false);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const pendingModelTextRef = useRef("");
 
   const sessionRef = useRef<Awaited<ReturnType<typeof ai.live.connect>> | null>(
     null,
@@ -214,6 +218,8 @@ export function useGeminiLive() {
     });
     await AudioManager.setAudioSessionActivity(true);
     chunksSent.current = 0;
+    setTranscript([]);
+    pendingModelTextRef.current = "";
 
     const session = await ai.live.connect({
       model: MODEL,
@@ -228,6 +234,8 @@ Personality: calm, direct, and a little warm — like a smart friend who happens
 
 When the session starts, immediately open with a short greeting — one sentence, no fanfare, don't wait for the user to speak first. The user's name is Max. Use it sometimes, skip it other times — vary it naturally so it doesn't feel like a pattern. Something like "Hey Max, what's on your mind?" or "Hey — what are we working on?" or "What's up?" Keep it unpredictable.`,
         responseModalities: [Modality.AUDIO],
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
         },
@@ -246,12 +254,42 @@ When the session starts, immediately open with a short greeting — one sentence
           if (message.data) {
             enqueueChunk(base64ToInt16Array(message.data));
           }
+
+          // Output transcription streams as chunks with no finished flag — flush on turnComplete.
+          const outTx = message.serverContent?.outputTranscription;
+          if (outTx?.text) pendingModelTextRef.current += outTx.text;
+
+          // Input transcription arrives as a single complete message.
+          const inTx = message.serverContent?.inputTranscription;
+          if (inTx?.text?.trim()) {
+            setTranscript((prev) => [
+              ...prev,
+              { role: "user", text: inTx.text!.trim() },
+            ]);
+          }
+
           if (message.serverContent?.interrupted) {
             console.log("[Gemini] Interrupted");
+            const interruptedText = pendingModelTextRef.current.trim();
+            pendingModelTextRef.current = "";
+            if (interruptedText) {
+              setTranscript((prev) => [
+                ...prev,
+                { role: "model", text: interruptedText },
+              ]);
+            }
             stopCurrentPlayback();
           }
           if (message.serverContent?.turnComplete) {
             console.log("[Gemini] Turn complete — draining playback");
+            const completedText = pendingModelTextRef.current.trim();
+            pendingModelTextRef.current = "";
+            if (completedText) {
+              setTranscript((prev) => [
+                ...prev,
+                { role: "model", text: completedText },
+              ]);
+            }
             // Don't stop the source here — let buffered audio play out.
             // finalizeTurn will tear down once pendingBuffers reaches 0.
             turnEndingRef.current = true;
@@ -331,5 +369,5 @@ When the session starts, immediately open with a short greeting — one sentence
     setIsConnected(false);
   }, [stopCurrentPlayback, stopKeepAlive]);
 
-  return { connect, disconnect, isConnected, isModelSpeaking };
+  return { connect, disconnect, isConnected, isModelSpeaking, transcript };
 }
