@@ -26,6 +26,9 @@
     "typescript": "^5.6.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@biomejs/biome", "@nestjs/core", "esbuild"]
+    "onlyBuiltDependencies": ["@biomejs/biome", "@nestjs/core", "esbuild"],
+    "overrides": {
+      "lightningcss": "1.30.1"
+    }
   }
 }

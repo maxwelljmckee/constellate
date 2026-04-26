@@ -211,6 +211,15 @@ These were confirmed in user reviews but worth re-flagging as the user explicitl
 
 ---
 
+## Code phase — Slice 1 deviations (2026-04-26)
+
+### Apple sign-in deferred; Google-only at slice 1
+- **User-instructed 2026-04-26.** Build-plan slice 1 specified both Apple + Google sign-in. Apple deferred because Apple Developer Program enrollment is blocked on Apple support (Individual Enrollment issue under review). Slice 1 ships with Google sign-in only via Supabase Auth.
+- Apple sign-in tracked as P0 in `backlog.md` → Security section; re-incorporate before TestFlight push (slice 9). Anticipated work: `expo-apple-authentication` + Supabase Auth Apple provider config + matching `Sign in with Apple` capability/entitlement on the iOS bundle (paid enrollment required for the entitlement).
+- **Reconsider if:** Apple support resolves enrollment before slice 1 ships, in which case fold Apple back in alongside Google.
+
+---
+
 ## How to use this log
 
 1. Skim before code phase begins.

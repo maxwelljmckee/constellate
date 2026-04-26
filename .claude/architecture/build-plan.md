@@ -35,19 +35,37 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 **Goal:** every package has a hello-world that runs.
 
-- ⏺️ pnpm workspace at repo root
-- ⏺️ `apps/mobile/` — Expo init; NativeWind setup; Expo Router scaffolding; theme tokens stubbed (Azure-only); status bar default; "hello world" home placeholder
-- ⏺️ `apps/server/` — NestJS init; minimal `GET /health` returning 200; pino structured logging; Sentry stub
-- ⏺️ `apps/worker/` — NestJS or plain Node entry; Graphile Worker connected to local Supabase Postgres; logs a heartbeat every 30s; Sentry stub
-- ⏺️ `packages/shared/` — TypeScript package; exports a placeholder type; consumed by both mobile + server
-- ⏺️ Biome + Prettier-Tailwind plugin + base tsconfig at root, extended per-app
-- ⏺️ Supabase CLI running locally (`supabase start`); Drizzle initialized against local Postgres
-- ⏺️ **First migration: full data model in one shot.** Every MVP table, every column, every index, every RLS policy stub (real RLS lands in Slice 9). 20+ tables. Done as one carefully-reviewed migration so we don't evolve schema iteratively under us. Generated `packages/shared/db.ts` types from this.
-- ⏺️ **Validation spike (~½ day):** RxDB + Supabase replication plugin against the local schema. Stand up one collection, validate two-way sync works with RLS. Cheap insurance against a Slice 5 disaster.
+**2026-04-26 sequencing change** (per `judgement-calls.md`): split into 0a (server+worker locally) → 0b (Render deploy) → 0c (mobile bootstrap). RxDB validation spike deferred to 0c.
 
-**Demo:** all three apps boot. Mobile loads to a blank home placeholder. Server responds 200 to health. Worker logs heartbeat. Local Postgres has all MVP tables.
+### 0a — Server + worker locally (✅ done 2026-04-26)
+- ✅ pnpm workspace at repo root
+- ✅ `apps/server/` — NestJS init; minimal `GET /health` returning 200; pino structured logging; Sentry stub
+- ✅ `apps/worker/` — plain Node + graphile-worker connected to **cloud Supabase** (no local CLI); logs a heartbeat every 30s; Sentry stub
+- ✅ `packages/shared/` — TypeScript package compiled to `dist/`; consumed by both apps
+- ✅ Biome + base tsconfig at root, extended per-app
+- ✅ Drizzle initialized against cloud Postgres
+- ✅ **First migration: full data model in one shot.** All 17 MVP tables, 10 enums, ~30 FKs (incl. cross-schema to `auth.users`), ~30 indexes (btree, GIN with `jsonb_path_ops`, tsvector, partial WHERE), 4 triggers, RLS enabled on all (no policies until slice 9). Schema design doc at `specs/db-schema-plan.md`.
 
-**Estimated:** 3–5 days.
+### 0b — Render deploy (✅ done 2026-04-26)
+- ✅ `render.yaml` Blueprint; both services on `starter` plan ($14/mo total), `oregon` region
+- ✅ `audri-server` live at `https://audri-server.onrender.com` — `/health` returns 200
+- ✅ `audri-worker` live, processing heartbeats against cloud DB
+- ✅ Build pipeline: `pnpm install --frozen-lockfile && pnpm --filter @audri/{name}... build` then `pnpm --filter @audri/{name} start`
+- ✅ Auto-deploy on push to default branch
+- ✅ `EXPO_PUBLIC_API_URL` set in `.env.local` to live Render URL
+
+### 0c — Mobile bootstrap (✅ done 2026-04-26)
+- ✅ `apps/mobile/` — Expo SDK 54 + Expo Router with `(auth)` + `(app)` route groups; hello-world home placeholder rendering Azure theme
+- ✅ Metro configured for pnpm monorepo (watchFolders + nodeModulesPaths + disableHierarchicalLookup) + NativeWind v5 wrapper
+- ✅ NativeWind v5 preview + Tailwind v4 + PostCSS pipeline live; Azure theme tokens defined in `global.css`
+- ✅ Cross-package `@audri/shared` import working from mobile
+- ✅ `apps/mobile/.env.local` for `EXPO_PUBLIC_*` (Expo reads from project dir, not monorepo root)
+- ✅ **RxDB + Supabase replication validation spike** — RxDB 14.x + rxdb-supabase 1.0.4 + memory storage. Construct against cloud schema succeeds. Real wiring (expo-sqlite + RLS-aware auth + full collection set) lands in slice 5.
+- ✅ Verified on iOS via Expo Go
+
+**Demo:** server `/health` 200 from public Render URL. Worker logs heartbeat in Render's log viewer. Cloud Postgres has all MVP tables. Mobile boots to home placeholder showing app name + shared-package name + API URL + RxDB spike result.
+
+**Estimated:** 3–5 days. Actual: entire Slice 0 in 1 day.
 
 ---
 
@@ -55,14 +73,14 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 **Goal:** complete signup flow lands the user on a home screen with their seeded data visible.
 
-- ⏺️ Mobile: Apple sign-in + Google sign-in via Supabase Auth (`@supabase/supabase-js` + `expo-apple-authentication` + Google equivalent)
+- ⏺️ Mobile: **Google sign-in via Supabase Auth** (`@supabase/supabase-js` + Google OAuth flow). Apple sign-in deferred until Apple Developer enrollment unblocks (see `judgement-calls.md` 2026-04-26). Apple sign-in is P0 in `backlog.md` → re-incorporate before TestFlight push.
 - ⏺️ Server: signup webhook from Supabase Auth → seed transaction (1 `agents` row + 20 `wiki_pages` rows + 1 `user_settings` row, atomic, idempotent)
 - ⏺️ Mobile: routing gate — `(auth)` redirect away if authed; `(app)` redirect to `(auth)` if unauthed
 - ⏺️ Mobile: Home screen shell — wordmark, greeting (time-aware), avatar stub, plugin grid placeholder (4 tiles: Wiki / Todos / Research / Profile), phone-icon button at bottom. Tiles do nothing yet; phone button does nothing yet.
 - ⏺️ Server: minimal `GET /me` endpoint returning `{ user_id, agents[], user_settings }` for client bootstrap (RxDB comes in Slice 5; this is REST for now)
 - ⏺️ Mobile: full-screen edge-to-edge background; safe-area insets respected for layout
 
-**Demo:** sign in with Apple → server seeds wiki → mobile lands on home → home renders with personal greeting. No call yet, no plugin contents yet.
+**Demo:** sign in with Google → server seeds wiki → mobile lands on home → home renders with personal greeting. No call yet, no plugin contents yet. (Apple sign-in path added back when Apple Developer unblocks.)
 
 **Estimated:** 4–6 days.
 
