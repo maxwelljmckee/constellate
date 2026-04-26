@@ -171,6 +171,12 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | Rate limiting | P1 | M | Security | Per-user call starts, task triggers, upload rates. Source: §20. |
 | Abuse / quota ceilings | P1 | M | Security | Prevent runaway inference costs. Source: §20. |
 
+### Environments
+
+| Name | Priority | Effort | Type | Description |
+|---|---|---|---|---|
+| Split dev / prod Supabase projects | P1 | S | Infra | MVP runs against a single Supabase project. Before opening up to non-Max users, split into dedicated dev + prod projects so schema iteration, seeded test data, and RLS experiments can't touch real user data. Includes: separate Supabase URLs/keys per env, Render env-var wiring, Drizzle migration runner pointed at the right project per env. Decided 2026-04-26 to defer. |
+
 ---
 
 ## Data model

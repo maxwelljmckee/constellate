@@ -1,0 +1,31 @@
+{
+  "name": "audri",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Audri — voice-first personal knowledge OS",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "check": "biome check .",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build",
+    "dev:server": "pnpm --filter @audri/server dev",
+    "dev:worker": "pnpm --filter @audri/worker dev",
+    "db:generate": "pnpm --filter @audri/server db:generate",
+    "db:migrate": "pnpm --filter @audri/server db:migrate",
+    "db:push": "pnpm --filter @audri/server db:push",
+    "db:studio": "pnpm --filter @audri/server db:studio"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@biomejs/biome", "@nestjs/core", "esbuild"]
+  }
+}

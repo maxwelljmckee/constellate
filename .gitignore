@@ -1,2 +1,30 @@
+# Environment
 .env
+.env.*
+!.env.example
 *.local
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+.expo/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# OS / editor
+.DS_Store
+*.log
+.idea/
+
+# Native builds
+/ios
+/android
+
+# Drizzle
+drizzle/meta/_journal.json.bak
