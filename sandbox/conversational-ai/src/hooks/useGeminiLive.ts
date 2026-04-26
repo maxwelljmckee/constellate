@@ -224,7 +224,7 @@ export function useGeminiLive() {
     const session = await ai.live.connect({
       model: MODEL,
       config: {
-        systemInstruction: `You are Muse, a voice-first AI assistant built into a personal knowledge app. You help the user with three core things:
+        systemInstruction: `You are Audri, a voice-first AI assistant built into a personal knowledge app. You help the user with three core things:
 
 1. Notes & research — capture ideas, look things up, summarize sources, and store anything worth keeping.
 2. Thought partnership — help the user think through problems, connect ideas across different domains, and surface patterns they might be missing.
@@ -334,7 +334,7 @@ When the session starts, immediately open with a short greeting — one sentence
 
     if (Platform.OS === "android") {
       PlaybackNotificationManager.show({
-        title: "Constellate",
+        title: "Audri",
         artist: "Voice call active",
       });
     }

@@ -83,17 +83,17 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 ## Slice 3 — Real Gemini Live wiring
 
-**Goal:** actual conversation with Muse. Transcripts persist. No ingestion yet.
+**Goal:** actual conversation with Audri. Transcripts persist. No ingestion yet.
 
 - [ ] Server: `POST /calls/start` composes minimal system prompt (scaffolding text inline for now — explicit Gemini caching comes Slice 6 when it pays off) + persona + ontology primer + capability stub. Returns `gemini_config` for the client.
 - [ ] Mobile: client receives `gemini_config`; opens Gemini Live WebSocket directly to Google
 - [ ] Mobile: real audio levels drive the orb (replace fake amplitude); speaker-detection drives orb color
 - [ ] Mobile: turn-tagged transcript captured client-side
 - [ ] Server: `POST /calls/:session_id/end` accepts transcript JSON; persists `call_transcripts` row; idempotent on `session_id`. NO ingestion enqueue yet — just storage.
-- [ ] **Pre-MVP: barge-in working** (already flagged in `todos.md` §8 open). User can interrupt Muse mid-utterance; mic-gate spans full turn; per-buffer onEnded handles cleanup. This is the slice where we tackle it.
-- [ ] Server: stub Muse persona prompt — friendly, warm, brief (real persona text drafted in Slice 6)
+- [ ] **Pre-MVP: barge-in working** (already flagged in `todos.md` §8 open). User can interrupt Audri mid-utterance; mic-gate spans full turn; per-buffer onEnded handles cleanup. This is the slice where we tackle it.
+- [ ] Server: stub Audri persona prompt — friendly, warm, brief (real persona text drafted in Slice 6)
 
-**Demo:** tap phone → real conversation with Muse → hang up → check `call_transcripts` row in Postgres has the transcript. Orb actually responds to who's talking.
+**Demo:** tap phone → real conversation with Audri → hang up → check `call_transcripts` row in Postgres has the transcript. Orb actually responds to who's talking.
 
 **Estimated:** 5–7 days. Barge-in is the wildcard.
 

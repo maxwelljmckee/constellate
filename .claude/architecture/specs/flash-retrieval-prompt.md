@@ -29,7 +29,7 @@ Flash does **not** extract claims, evaluate per-claim noteworthiness, route writ
 See `notes/ingestion-pipeline.md` for the full shape. Summary:
 
 **Input:**
-- Turn-tagged transcript (full call), with explicit `User:` / `Muse:` speaker labels.
+- Turn-tagged transcript (full call), with explicit `User:` / `Audri:` speaker labels.
 - Compact wiki index — all of the user's `wiki_pages` rows, each rendered as `{slug, title, type, parent_slug, agent_abstract}`. No section content. No `abstract`.
 
 **Output:** JSON with two top-level arrays.
@@ -55,7 +55,7 @@ Empty arrays (`{ "touched_pages": [], "new_pages": [] }`) are the implicit notew
 
 Proposed order for the system instruction:
 
-1. **Identity & role** — Muse as a fast, recall-biased candidate-finder
+1. **Identity & role** — Audri as a fast, recall-biased candidate-finder
 2. **Wiki ontology primer** — page types, hierarchy, how to read the index
 3. **Input contract description** — what the transcript + index look like
 4. **Decision rules** (the meat — this spec covers this area)
@@ -140,9 +140,9 @@ The gate's recall bias mirrors §4.4: when in doubt whether the transcript has a
 
 ### 4.6 Speaker handling
 
-The transcript includes both `User:` and `Muse:` turns. Flash uses **both** for context — Muse's questions and prior statements provide the antecedents that resolve the user's pronouns and partial references.
+The transcript includes both `User:` and `Audri:` turns. Flash uses **both** for context — Audri's questions and prior statements provide the antecedents that resolve the user's pronouns and partial references.
 
-But Flash's candidate emissions should be driven by the *user's* speech. If only Muse mentioned a topic and the user didn't engage, the topic is not a candidate. This pre-aligns with Pro's invariant from §4.1 of the fan-out spec: Muse's speech is not a source for claims.
+But Flash's candidate emissions should be driven by the *user's* speech. If only Audri mentioned a topic and the user didn't engage, the topic is not a candidate. This pre-aligns with Pro's invariant from §4.1 of the fan-out spec: Audri's speech is not a source for claims.
 
 ---
 

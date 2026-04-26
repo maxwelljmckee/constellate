@@ -37,7 +37,7 @@ See `notes/ingestion-pipeline.md` for the full shape. Summary:
 
 Proposed order for the system instruction:
 
-1. **Identity & role** — Muse as disciplined wiki maintainer
+1. **Identity & role** — Audri as disciplined wiki maintainer
 2. **Wiki ontology primer** — page types, scopes (user-only for Pro), hierarchy, sections, `agent_abstract` vs `abstract`
 3. **Input contract description** — what the transcript + candidate pages look like
 4. **Decision rules** (the meat — this spec covers this area)
@@ -92,9 +92,9 @@ The implicit todo is a multi-target write (rule 1 of §4.3). Flash is responsibl
 
 #### Speaker attribution
 
-Claims are attributed to the speaker. The user's speech becomes claims about the user (or about entities they mention). **Muse's speech is NOT a source for claims** — Muse cannot author KG content from its own utterances. Restating facts back to the user does not create new claims.
+Claims are attributed to the speaker. The user's speech becomes claims about the user (or about entities they mention). **Audri's speech is NOT a source for claims** — Audri cannot author KG content from its own utterances. Restating facts back to the user does not create new claims.
 
-This is an invariant, not a heuristic: without it, ingestion becomes a closed loop where Muse's inference during a call could be written into the user's KG as if the user said it.
+This is an invariant, not a heuristic: without it, ingestion becomes a closed loop where Audri's inference during a call could be written into the user's KG as if the user said it.
 
 ### 4.2 Per-claim noteworthiness
 
@@ -102,7 +102,7 @@ For each claim extracted in stage 2, decide: proceed to routing, or drop into `s
 
 #### Worth writing
 
-A claim is noteworthy if it would change Muse's understanding of the user, a tracked entity, or the world. Specifically:
+A claim is noteworthy if it would change Audri's understanding of the user, a tracked entity, or the world. Specifically:
 
 - **Facts** about tracked entities — state changes, attribute updates, events, biographical details.
 - **Stated commitments or intents** — "I'll do X", "I want to Y" with enough specificity to be actionable.

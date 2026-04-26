@@ -1,4 +1,4 @@
-# Constellate — Features
+# Audri — Features
 
 A catalog of target features for the product, grouped by area. Items are tagged for **MVP** scope or **V1+** (deferred). For full deferred-work tracking with priority + effort, see `backlog.md`.
 
@@ -6,8 +6,8 @@ A catalog of target features for the product, grouped by area. Items are tagged 
 
 ## Call experience
 
-### Voice calls with Muse — `MVP`
-Voice-first conversation with the active agent (Muse / Assistant at MVP). Persists through screen-lock. Initiated via the phone FAB available from any screen.
+### Voice calls with Audri — `MVP`
+Voice-first conversation with the active agent (Audri / Assistant at MVP). Persists through screen-lock. Initiated via the phone FAB available from any screen.
 
 Two call types at MVP:
 - **`generic`** — open-ended conversation; default preload (recent context, index, agent scope).
@@ -42,7 +42,7 @@ Toast notifications for terminal task transitions (succeeded, failed). Tap to de
 Expo Push or native APNs/FCM. Per-platform cert management. MVP relies on in-app surfaces; users see notifications next time they open the app.
 
 ### Proactive recommendations — `V1+`
-Muse identifies patterns + surfaces recommendations:
+Audri identifies patterns + surfaces recommendations:
 - Suggested scheduled tasks ("you've asked about AI news 3 mornings in a row — want a daily AI brief?")
 - Suggested wiki changes (entity merges, missing connections, page splits)
 - Suggested follow-ups from recent calls
@@ -171,7 +171,7 @@ Browse + enable plugins; connector-required prompts.
 
 These hold across every feature, MVP and beyond:
 
-- **Every new feature adds to the activity stream.** If Muse did something, the user sees it.
+- **Every new feature adds to the activity stream.** If Audri did something, the user sees it.
 - **Every new artifact is a graph citizen.** It knows its provenance and downstream consumers.
 - **Every automation has a manual override.** Schedules pausable, recommendations dismissable, task results editable (where appropriate).
 - **Every generated output is filable into the wiki** (or its dedicated artifact table). Knowledge compounds across sessions.

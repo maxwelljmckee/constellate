@@ -95,7 +95,7 @@ export function VoiceScreen({ onExit }: Props) {
                 ]}
               >
                 <Text style={styles.bubbleLabel}>
-                  {entry.role === "user" ? "You" : "Muse"}
+                  {entry.role === "user" ? "You" : "Audri"}
                 </Text>
                 <Text style={styles.bubbleText}>{entry.text}</Text>
               </View>

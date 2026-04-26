@@ -2,7 +2,7 @@
 
 Status: **draft** — decision rules locked; prompt-text drafting + worked examples + evals remain.
 
-The research task is the only MVP plugin. When a user asks Muse to research a topic mid-call (or fan-out extracts a research-intent commitment from a transcript), an `agent_tasks` row is created with `kind='research'`. The Graphile worker picks it up, dispatches via the plugin registry to the research handler, which runs a Pro call with web grounding, validates output, and commits to `research_outputs`.
+The research task is the only MVP plugin. When a user asks Audri to research a topic mid-call (or fan-out extracts a research-intent commitment from a transcript), an `agent_tasks` row is created with `kind='research'`. The Graphile worker picks it up, dispatches via the plugin registry to the research handler, which runs a Pro call with web grounding, validates output, and commits to `research_outputs`.
 
 This SPEC specifies the registry entry, handler I/O contract, prompt decision rules, and output schema.
 

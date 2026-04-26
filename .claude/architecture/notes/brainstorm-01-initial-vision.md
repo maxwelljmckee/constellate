@@ -1,9 +1,9 @@
-# Constellate – Initial Brainstorm
+# Audri – Initial Brainstorm
 _April 17, 2026_
 
 ## The Core Idea
 
-Constellate is a voice-first personal knowledge OS. It acts as the glue between apps like Obsidian, NotebookLM, and best-in-class voice AI — taking the best of each and combining them into a single end-to-end workflow:
+Audri is a voice-first personal knowledge OS. It acts as the glue between apps like Obsidian, NotebookLM, and best-in-class voice AI — taking the best of each and combining them into a single end-to-end workflow:
 
 **Voice in → knowledge captured → content generated autonomously → ready to consume when you return**
 
@@ -20,11 +20,11 @@ When you're reading or listening and come across something worth exploring — a
 4. Consume it
 5. Manually make connections back to your existing knowledge
 
-Constellate collapses steps 2–5 into a background process. You just make the note.
+Audri collapses steps 2–5 into a background process. You just make the note.
 
 ---
 
-## Input: How You Talk to Constellate
+## Input: How You Talk to Audri
 
 - **Not always-on listening** — instead, a Siri / Google Assistant integration that initiates a "call" with your AI
 - Hands-free accessible without requiring physical device interaction
@@ -38,8 +38,8 @@ Constellate collapses steps 2–5 into a background process. You just make the n
 The app's UX is modeled on a familiar home screen grid of icons — but instead of apps, they are **Plugins**.
 
 Two types:
-- **Core Plugins** — data lives in Constellate (e.g. Podcasts, Knowledge Graph)
-- **3rd Party Plugins** — Constellate interfaces with external apps via public API or MCP (e.g. Gmail, Obsidian, Calendar)
+- **Core Plugins** — data lives in Audri (e.g. Podcasts, Knowledge Graph)
+- **3rd Party Plugins** — Audri interfaces with external apps via public API or MCP (e.g. Gmail, Obsidian, Calendar)
 
 ### Podcasts Core Plugin (primary MVP focus)
 On creation, user specifies:

@@ -37,7 +37,7 @@
 
 **What we're building:** A voice-first conversational AI interface in Expo — tap "Go Live", speak freely, get Haiku 4.5 responses spoken back in real time.
 
-**Problem being solved:** Spike to validate the STT → LLM → TTS pipeline end-to-end as a foundation for Constellate's voice interaction layer.
+**Problem being solved:** Spike to validate the STT → LLM → TTS pipeline end-to-end as a foundation for Audri's voice interaction layer.
 
 **Scope:**
 - In: STT via `expo-speech-recognition`, streaming Haiku 4.5 via Anthropic SDK, TTS via `expo-speech` with sentence buffering, static voice mode UI, iOS + Android

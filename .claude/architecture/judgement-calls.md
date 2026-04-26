@@ -20,10 +20,10 @@ Created: 2026-04-25.
 - **Reconsider if:** Onboarding completion rate is too low OR profile pages come out too thin.
 
 ### Onboarding interview format — REVISED 2026-04-26
-- **Decided (current):** Structured-but-conversational. Standard opening (self-intro + "What brings you to Muse?"). Topics scoped to 7 askable profile areas (Values + Psychology emergent-only). Slightly proactive capability advertisement tied to stated needs (no upfront feature menu). Order + depth + transitions adapt to user.
+- **Decided (current):** Structured-but-conversational. Standard opening (self-intro + "What brings you to Audri?"). Topics scoped to 7 askable profile areas (Values + Psychology emergent-only). Slightly proactive capability advertisement tied to stated needs (no upfront feature menu). Order + depth + transitions adapt to user.
 - **Revisions on 2026-04-26 (user feedback):** added explicit self-intro template; added opener question; flagged Values + Psychology as never-explicitly-asked; shifted capability advertisement from "intentionally minimal" to "slightly proactive but balanced."
 - **Why:** Voice-first should feel conversational, not surveyed; opener naturally surfaces multiple profile areas at once; emergent-only treatment for Values + Psychology produces richer signal than direct asks; capability balance lets users learn what's possible without feeling sold to.
-- **Reconsider if:** Profile pages come out too thin OR feel too interrogative OR users leave onboarding without understanding what Muse can do.
+- **Reconsider if:** Profile pages come out too thin OR feel too interrogative OR users leave onboarding without understanding what Audri can do.
 
 ### Onboarding seed: 5 agent-scope pages instead of 4
 - **Decided:** Default Assistant agent's seed subtree is 5 pages (root + observations + recurring-themes + preferences-noted + open-questions).
@@ -148,7 +148,7 @@ These were confirmed in user reviews but worth re-flagging as the user explicitl
 - Conservative preload budget (10–15k slice / 13–15k total system prompt) — user opted to start lower
 - No mid-call task initiation in `generic` calls; trial-artifact exception originally for onboarding then bumped to V1+
 - Gemini Live built-in Google grounding for MVP (vs. custom abstraction) — confirmed
-- Two-phase call-end with confirmation gating only agent-executed actions — confirmed; **2026-04-26 amendment**: confirmation can happen mid-call OR in recap. Mid-call user "yes" to a Muse-advertised capability counts as confirmed; recap doesn't need to re-surface those items. May still mention briefly for transparency if list is short or user asks. Users can drop mid-call confirmations in any later turn.
+- Two-phase call-end with confirmation gating only agent-executed actions — confirmed; **2026-04-26 amendment**: confirmation can happen mid-call OR in recap. Mid-call user "yes" to a Audri-advertised capability counts as confirmed; recap doesn't need to re-surface those items. May still mention briefly for transparency if list is short or user asks. Users can drop mid-call confirmations in any later turn.
 - Transcript-only audio retention at MVP — confirmed
 
 ---

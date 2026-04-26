@@ -25,7 +25,7 @@ This spec covers the React Native + Expo mobile app's MVP architecture: project 
 
 ## Design language
 
-The visual direction is **Liquid Glass** per the muse-home-v2 design exploration — voice-first, calm, dark-mode-default, ambient gradient backgrounds with translucent layered tiles.
+The visual direction is **Liquid Glass** per the audri-home-v2 design exploration — voice-first, calm, dark-mode-default, ambient gradient backgrounds with translucent layered tiles.
 
 ### Themes
 
@@ -96,7 +96,7 @@ apps/mobile/
 
 **Layout:**
 - Full-screen ambient gradient (Azure default) behind everything
-- Centered: small `muse.ai` wordmark
+- Centered: small `audri.ai` wordmark
 - Below wordmark: brief tagline (e.g., *"Voice-first knowledge OS"* — exact copy TBD at design time)
 - Stack of two buttons: Apple sign-in, Google sign-in
 - Footer: minimal terms-of-service / privacy-policy links
@@ -130,9 +130,9 @@ apps/mobile/
 
 **Purpose:** primary surface; entry point to everything.
 
-**Layout** (per muse-home-v2):
+**Layout** (per audri-home-v2):
 - Full-screen ambient gradient (theme-tokened)
-- Top row (within safe area): `muse.ai` wordmark left, avatar circle right (stub at MVP — see backlog)
+- Top row (within safe area): `audri.ai` wordmark left, avatar circle right (stub at MVP — see backlog)
 - Large greeting: *"Good morning."* (time-aware: morning / afternoon / evening) — H1, `text-primary`, generous line-height
 - *No subtext* (sessions/drafts omitted per user direction)
 - `PLUGINS` section header (small caps, `text-muted`)
@@ -169,7 +169,7 @@ apps/mobile/
 **Layout:**
 - Full-screen dark background (deeper than home — call mode is its own ambient state; can be the theme's deepest background token)
 - Centered: **speaking orb** (animated; see below)
-- Below orb: subtle text — agent name (or `Muse` default), subtle "in conversation" indicator, optional elapsed time
+- Below orb: subtle text — agent name (or `Audri` default), subtle "in conversation" indicator, optional elapsed time
 - Bottom: hang-up button (red circle, X or end-call icon)
 - (No transcript feed at MVP. Voice is primary; reading the transcript while talking is anti-pattern. Transcript visible post-call via call-history surface, V1+.)
 

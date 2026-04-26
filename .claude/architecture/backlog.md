@@ -1,4 +1,4 @@
-# Constellate — Backlog
+# Audri — Backlog
 
 Things we plan to do but deferred out of MVP. Centralized here so we don't lose track as we pile "do this later" notes into `todos.md` and `tradeoffs.md`.
 
@@ -99,7 +99,7 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | Mid-call tool set beyond `search_graph` | P2 | M | Feature | Web search, URL fetch, calendar peek. Source: §8. |
 | Call resumption after network drop | P2 | L | Feature | Resume or start fresh on reconnect. Source: §8. |
 | Audio retention policy | P2 | M | Data model + Infra | MVP keeps transcript-only. Reconsider raw audio retention if (a) transcript quality issues warrant source-review, (b) users want to replay calls, (c) compliance/audit requires it. Adds Supabase Storage bucket per user, retention policy, playback UI. Source: §8 Chunk 5. |
-| Reconsider "Muse's speech is not a claim source" invariant | P2 | S | Tech debt | MVP excludes agent turns from commitment extraction (per `specs/fan-out-prompt.md` §4.1) to prevent closed-loop hallucination. Reconsider when: Muse's clarifying restatements ("so you mean X?") followed by user confirmation are losing useful claim signal, OR a confirmation-aware extraction policy ("treat agent turn as claim source if explicitly user-confirmed in next turn") becomes worth the complexity. Source: §8 Chunk 5. |
+| Reconsider "Audri's speech is not a claim source" invariant | P2 | S | Tech debt | MVP excludes agent turns from commitment extraction (per `specs/fan-out-prompt.md` §4.1) to prevent closed-loop hallucination. Reconsider when: Audri's clarifying restatements ("so you mean X?") followed by user confirmation are losing useful claim signal, OR a confirmation-aware extraction policy ("treat agent turn as claim source if explicitly user-confirmed in next turn") becomes worth the complexity. Source: §8 Chunk 5. |
 
 ---
 
@@ -141,7 +141,7 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | `search_graph` implementation (FTS first) | P0 | M | Infra | Postgres full-text search over `wiki_sections.content` + metadata. Source: §18. |
 | Embedding pipeline (pgvector) | P2 | XL | Infra | Semantic search. Model choice, compute-on-edit freshness, blended ranking with FTS. Source: §18. |
 | Custom `search_google` tool + provider abstraction | P1 | M | Infra | MVP uses Gemini Live's built-in Google search grounding (config flag, no custom tool). Migrate to a custom `search_google` tool with a provider abstraction layer (Tavily likely candidate, alternatives: Brave, SerpAPI, Perplexity) when triggered by per-call cost visibility needs, provider switching needs, or fine-grained budget control. Behavior: server-side tool, snippet-only return, conservative per-turn budget. Source: §8 Chunk 4. |
-| `fetch_url` tool (read full URL content) | P2 | M | Feature + Infra | Beyond Google snippets — actually fetch + clean + extract URL contents for deeper grounding. Adds HTML extraction (Readability or similar), paywall handling, image/video skipping. Lets Muse summarize articles directly. Source: §8 Chunk 4. |
+| `fetch_url` tool (read full URL content) | P2 | M | Feature + Infra | Beyond Google snippets — actually fetch + clean + extract URL contents for deeper grounding. Adds HTML extraction (Readability or similar), paywall handling, image/video skipping. Lets Audri summarize articles directly. Source: §8 Chunk 4. |
 
 ### Recent-activity cache
 

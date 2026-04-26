@@ -2,11 +2,11 @@
 
 Status: **draft** — design rules locked across all chunks. Prompt-text drafting + worked examples + evals remain.
 
-The onboarding interview is the user's first interaction with Muse. It's a Gemini Live call (`call_type='onboarding'`) with a specialized scaffolding that guides Muse through a structured-but-conversational flow to fill out the user's profile pages. The flow runs after a server-side seed transaction populates baseline wiki structure.
+The onboarding interview is the user's first interaction with Audri. It's a Gemini Live call (`call_type='onboarding'`) with a specialized scaffolding that guides Audri through a structured-but-conversational flow to fill out the user's profile pages. The flow runs after a server-side seed transaction populates baseline wiki structure.
 
 This SPEC covers two things:
 1. **Wiki seeding protocol** — what gets created in the DB at signup (pre-interview state)
-2. **Interview design** — how Muse navigates the conversation, tracks progress, and decides when to wrap up
+2. **Interview design** — how Audri navigates the conversation, tracks progress, and decides when to wrap up
 
 ---
 
@@ -42,7 +42,7 @@ created_at: now()
 tombstoned_at: NULL
 ```
 
-The default Assistant persona prompt establishes Muse's baseline voice — friendly, warm, concise, curious, honest. Custom persona prompts arrive V1+ via custom-agent UX.
+The default Assistant persona prompt establishes Audri's baseline voice — friendly, warm, concise, curious, honest. Custom persona prompts arrive V1+ via custom-agent UX.
 
 ### `wiki_pages` seed
 
@@ -128,32 +128,32 @@ All inserts atomic in one transaction. If any insert fails, signup fails — nev
 
 ### Interaction shape
 
-Muse runs a **structured-but-conversational** interview. Not a rigid scripted Q&A; not freeform chat. Topics are scoped (a subset of the profile sub-areas) but the order, depth, and conversational style adapt to the user.
+Audri runs a **structured-but-conversational** interview. Not a rigid scripted Q&A; not freeform chat. Topics are scoped (a subset of the profile sub-areas) but the order, depth, and conversational style adapt to the user.
 
-Onboarding scaffolding instructs Muse to:
+Onboarding scaffolding instructs Audri to:
 - Open with the standard self-introduction (see below) followed by the opener question
 - Follow the user's lead from there — pick transitions based on what they share
 - Ask follow-up questions when answers are vague
 - Move on when answers are substantive enough OR when the user seems done with that topic
-- Avoid making the user feel interrogated — pace lightly, comment on what they share, sometimes share Muse's own perspective if appropriate
+- Avoid making the user feel interrogated — pace lightly, comment on what they share, sometimes share Audri's own perspective if appropriate
 
 ### Opening sequence
 
 Every onboarding call begins with the same shape:
 
 **Self-introduction** (2–4 sentences):
-> *"Hi! I'm Muse. The way this works is — we have voice or text conversations, and I keep track of what matters to you in a kind of personal knowledge base. You can also ask me to do things on your behalf — research a topic, draft an email, that kind of thing. You can rename me and change my voice later in settings. Right now though, I'd love to get to know you a bit."*
+> *"Hi! I'm Audri. The way this works is — we have voice or text conversations, and I keep track of what matters to you in a kind of personal knowledge base. You can also ask me to do things on your behalf — research a topic, draft an email, that kind of thing. You can rename me and change my voice later in settings. Right now though, I'd love to get to know you a bit."*
 
 (Exact wording lives in the onboarding scaffolding prompt; this is the template.)
 
 **Opener question:**
-> *"What brings you to Muse?"* OR *"What were you hoping I could help you with?"*
+> *"What brings you to Audri?"* OR *"What were you hoping I could help you with?"*
 
-The opener is intentionally broad — it naturally surfaces goals, work, interests, and current concerns simultaneously, and gives Muse organic openings for capability advertisement (see below).
+The opener is intentionally broad — it naturally surfaces goals, work, interests, and current concerns simultaneously, and gives Audri organic openings for capability advertisement (see below).
 
 ### Capability advertisement during onboarding
 
-**Slightly proactive but balanced.** The user shouldn't leave onboarding without some sense of what Muse can do, but capability mentions must feel earned by the conversation, never like a sales pitch.
+**Slightly proactive but balanced.** The user shouldn't leave onboarding without some sense of what Audri can do, but capability mentions must feel earned by the conversation, never like a sales pitch.
 
 Discipline:
 - **Tie every capability mention to a stated need.** If the user mentions an interest in cooking, that's a natural opening to "I can do research on specific topics if you ever want a deep dive — recipes, techniques, that kind of thing." If they mention a busy work schedule, that's the moment for "I can help draft emails or summarize stuff to save you time."
@@ -161,13 +161,13 @@ Discipline:
 - **One capability per natural opening, max.** Don't pile suggestions; let one land before suggesting another.
 - **Frame as offers, not pitches.** "If you'd like…" / "I could…" / "Want me to try that?" — never declarative "I can do X for you."
 
-Goal: by call end, the user has heard 2–4 capability mentions naturally interspersed with the conversation, and has accepted at least one (or politely declined) — enough to build a rough mental model of what Muse can do. Without a single moment that felt like a tour.
+Goal: by call end, the user has heard 2–4 capability mentions naturally interspersed with the conversation, and has accepted at least one (or politely declined) — enough to build a rough mental model of what Audri can do. Without a single moment that felt like a tour.
 
 ### Topic coverage — askable vs. emergent
 
 The 9 profile areas split into two groups for onboarding purposes:
 
-**Askable (7 areas)** — Muse may direct conversation toward these:
+**Askable (7 areas)** — Audri may direct conversation toward these:
 - **Goals**: at least one short-term + one long-term goal, ideally with the *why*
 - **Life-History**: chapter-level narrative — where the user grew up, education, broad strokes of career, key turning points or formative experiences. **Intentionally light at onboarding** ("walk me through the rough shape — we can dig in over time"); depth accumulates organically as biographical references come up in future calls.
 - **Health**: current state, anything actively managed (sleep, fitness, nutrition, conditions), how the user thinks about health
@@ -176,7 +176,7 @@ The 9 profile areas split into two groups for onboarding purposes:
 - **Relationships**: who's important — family, partner, close friends, key colleagues. Names + brief context. (Don't pry into emotionally-loaded territory; just orient.)
 - **Preferences**: communication style, how they like to be spoken to, formality, directness, humor
 
-**Emergent-only (2 areas)** — Muse never directs conversation toward these. Their pages get populated from claims that surface naturally during conversation about the askable areas:
+**Emergent-only (2 areas)** — Audri never directs conversation toward these. Their pages get populated from claims that surface naturally during conversation about the askable areas:
 - **Values**: captured when the user volunteers them ("I really care about doing meaningful work") OR inferred from how they talk about goals / work / life-history. Asking "what are your values?" feels stilted and produces shallow answers; far better to let them emerge.
 - **Psychology**: same logic. "How do you describe yourself cognitively?" lands flat. Far richer signal comes from how the user actually talks about themselves across the askable areas — fan-out routes those claims to `profile/psychology` as warranted.
 
@@ -195,20 +195,20 @@ These are guidelines, not requirements. User can refuse or skim any topic.
 
 ### Progress tracking
 
-Muse tracks progress internally during the call (no DB persistence required mid-call). The interview's `wiki_log` entry post-call records which topics were "addressed" vs. "skipped" vs. "deferred."
+Audri tracks progress internally during the call (no DB persistence required mid-call). The interview's `wiki_log` entry post-call records which topics were "addressed" vs. "skipped" vs. "deferred."
 
-For mid-call progress: Muse maintains a working sense of "covered areas" and references it conversationally — "We've covered your goals and values. Want to talk about your work next, or save that for another time?"
+For mid-call progress: Audri maintains a working sense of "covered areas" and references it conversationally — "We've covered your goals and values. Want to talk about your work next, or save that for another time?"
 
 ### "Good enough to leave" heuristic
 
 Target call length: ~10 minutes average. Some users naturally take less; some go longer. The wrap heuristic shouldn't push toward longer calls.
 
-Muse wraps onboarding when at least ONE of:
+Audri wraps onboarding when at least ONE of:
 - **4+ of 7 askable profile areas covered substantively** (enough material for fan-out to produce 2+ claims each). Values + Psychology don't count toward this threshold — they're emergent.
 - **User explicitly signals done** ("I think that's enough for now," "let's stop here," "I'd rather just start using it")
-- **User has been on the call for 15+ minutes** (soft cap — Muse offers to wrap; user can extend if mid-thought)
+- **User has been on the call for 15+ minutes** (soft cap — Audri offers to wrap; user can extend if mid-thought)
 
-When wrapping, Muse:
+When wrapping, Audri:
 - Briefly summarizes what they covered
 - Notes what's still open ("we didn't get into your health or relationships yet — happy to pick that up another time")
 - Says goodbye warmly + transitions out
@@ -218,9 +218,9 @@ When wrapping, Muse:
 Onboarding is **not required to complete in one session.** User can:
 - Tap "skip for now" at any point → exits to home with whatever's been covered
 - Drop the call (network, app backgrounded, etc.) → standard dropped-call deferred-confirmation flow (§8 Chunk 5)
-- Resume later from settings ("complete your profile") → starts a new `call_type='onboarding'` session; Muse references existing profile content + picks up where it left off
+- Resume later from settings ("complete your profile") → starts a new `call_type='onboarding'` session; Audri references existing profile content + picks up where it left off
 
-There's no separate "onboarding state machine" tracked server-side. The state is implicit in the profile pages' content — empty/light = needs more onboarding; substantive = done. Muse on resumption reads the existing profile pages (preloaded per §8 Chunk 3 even though most onboarding preload is otherwise minimal — for resumption we DO preload existing profile content).
+There's no separate "onboarding state machine" tracked server-side. The state is implicit in the profile pages' content — empty/light = needs more onboarding; substantive = done. Audri on resumption reads the existing profile pages (preloaded per §8 Chunk 3 even though most onboarding preload is otherwise minimal — for resumption we DO preload existing profile content).
 
 ### Trial artifacts
 

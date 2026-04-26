@@ -1,4 +1,4 @@
-# Constellate — Architecture
+# Audri — Architecture
 
 Authoritative system-design document. Reflects all decisions locked in `todos.md` + `tradeoffs.md` + per-area specs (`specs/*.md`). Updated 2026-04-25.
 
@@ -8,9 +8,9 @@ For deferred / V1+ work, see `backlog.md`. For decisions made without explicit u
 
 ## Vision
 
-Constellate is a voice-first, general-purpose AI assistant ("Muse") that builds and maintains a persistent, compounding knowledge base about its user — their interests, work, relationships, goals, and evolving understanding of the world.
+Audri is a voice-first, general-purpose AI assistant ("Audri") that builds and maintains a persistent, compounding knowledge base about its user — their interests, work, relationships, goals, and evolving understanding of the world.
 
-The interaction model is conversational: the user talks with Muse via voice calls. Each call enriches a personal knowledge graph, which in turn informs every future conversation. Over time the assistant becomes progressively more useful because it progressively knows more.
+The interaction model is conversational: the user talks with Audri via voice calls. Each call enriches a personal knowledge graph, which in turn informs every future conversation. Over time the assistant becomes progressively more useful because it progressively knows more.
 
 ---
 
@@ -18,7 +18,7 @@ The interaction model is conversational: the user talks with Muse via voice call
 
 **MVP (V0):**
 - Onboarding interview that seeds the knowledge graph
-- Voice calls with Muse that draw from + contribute to the KG
+- Voice calls with Audri that draw from + contribute to the KG
 - Background research as an agent-executed task
 - Wiki browse + edit
 - Todos surface (projection over wiki)
@@ -38,7 +38,7 @@ The interaction model is conversational: the user talks with Muse via voice call
 ## Core UX principles
 
 ### Proactiveness
-Muse does things without always asking permission. Absorbs information from conversation, files it into the right place, proposes follow-ups, surfaces relevant context unprompted.
+Audri does things without always asking permission. Absorbs information from conversation, files it into the right place, proposes follow-ups, surfaces relevant context unprompted.
 
 ### Transparency
 Everything the AI does is visible. What it knows, where from, what it wrote, what it inferred. The wiki is a first-class surface the user browses, reads, and edits.
@@ -155,9 +155,9 @@ See §11 in `todos.md` for the full SPEC across 5 chunks. Summary:
 
 Karpathy's "LLM Wiki" pattern: knowledge as interlinked markdown pages, AI-maintained. Markdown is readable to both user and LLMs. The AI handles bookkeeping (cross-references, abstracts, supersession) so the graph stays healthy at near-zero maintenance cost.
 
-### Adaptations for Constellate
+### Adaptations for Audri
 
-Karpathy's pattern is document-centric. Constellate is conversation-centric — a 30-minute call is a stream of dozens of micro-facts that fan out across many pages. The server-side ingestion pipeline owns that fan-out.
+Karpathy's pattern is document-centric. Audri is conversation-centric — a 30-minute call is a stream of dozens of micro-facts that fan out across many pages. The server-side ingestion pipeline owns that fan-out.
 
 ### Scopes
 
@@ -368,7 +368,7 @@ See `specs/onboarding.md` for the full spec. Summary:
 
 1. **Signup:** Supabase Auth user created
 2. **Seed transaction:** 1 `agents` row + 20 `wiki_pages` rows (5 agent-scope + 10 profile + 5 todos) + 1 `user_settings` row, atomic
-3. **Onboarding interview:** Gemini Live call with `call_type='onboarding'`. Opens with brief Muse self-intro + opener ("What brings you to Muse?"). Structured-but-conversational; targets 7 askable profile areas (Values + Psychology emergent-only, never explicitly asked); tracks progress in-call. Capability advertisement is slightly proactive but tied to stated needs.
+3. **Onboarding interview:** Gemini Live call with `call_type='onboarding'`. Opens with brief Audri self-intro + opener ("What brings you to Audri?"). Structured-but-conversational; targets 7 askable profile areas (Values + Psychology emergent-only, never explicitly asked); tracks progress in-call. Capability advertisement is slightly proactive but tied to stated needs.
 4. **"Good enough" heuristic:** target ~10 min average. Wraps when 4+ of 7 askable areas covered substantively, OR user signals done, OR 15-min soft cap reached.
 5. **Resumable:** user can skip and return from settings later.
 6. **Post-onboarding:** standard ingestion runs against transcript; profile pages populated from extracted claims. Agent-scope ingestion captures initial observations.

@@ -78,7 +78,7 @@ Server-side session start:
 
 1. Fetch the `agents` row for `(user_id, agent_slug)`.
 2. Compose the Gemini Live system prompt:
-   - Base Muse scaffolding (shared across agents)
+   - Base Audri scaffolding (shared across agents)
    - `persona_prompt` + `user_prompt_notes`
    - User-wiki preload (shared across all agents for this user)
    - Active agent's wiki preload (scoped to `agent_id = agents.id`)

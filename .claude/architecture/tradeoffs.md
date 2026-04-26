@@ -1,4 +1,4 @@
-# Constellate — Tradeoffs Log
+# Audri — Tradeoffs Log
 
 Architectural decisions where we weighed real alternatives, recorded for traceability. Each entry names what we chose, what we passed on, the reasoning, and the trigger that would push us to revisit. Ordered by area.
 
@@ -168,10 +168,10 @@ This is a companion to `todos.md` (decision checklist) and `architecture.md` (cu
 - **Gives up:** Recall risk inherited from the §4.3 MVP scope — if Flash doesn't flag `todos/todo` as a candidate for a transcript containing commitments, the implicit todo is silently dropped. Mitigation: Flash prompt should treat commitment-pattern presence as a signal to always flag `todos/todo`.
 - **Revisit if:** Implicit todo capture proves too aggressive (users buried in todos they didn't intend) or too conservative (real commitments dropped). Either failure shifts the commitment-pattern list rather than the architecture.
 
-### Muse's speech is not a source for claims (invariant, not tradeoff)
-- **Chose:** Pro extracts claims only from the user's speech in the transcript. Muse's utterances are excluded from claim extraction, even when Muse restates facts back to the user.
-- **Why:** Without this invariant, ingestion becomes a closed loop — Muse's inferences during a call could be written into the user's KG as if the user authored them. Hallucination amplification.
-- **Gives up:** Nothing meaningful. Muse restating something is not new information.
+### Audri's speech is not a source for claims (invariant, not tradeoff)
+- **Chose:** Pro extracts claims only from the user's speech in the transcript. Audri's utterances are excluded from claim extraction, even when Audri restates facts back to the user.
+- **Why:** Without this invariant, ingestion becomes a closed loop — Audri's inferences during a call could be written into the user's KG as if the user authored them. Hallucination amplification.
+- **Gives up:** Nothing meaningful. Audri restating something is not new information.
 - **Revisit if:** N/A — this is a security invariant, not a tradeoff.
 
 ### Skip-default for per-claim noteworthiness (vs. write-default)
@@ -298,8 +298,8 @@ This is a companion to `todos.md` (decision checklist) and `architecture.md` (cu
 - **Chose:** Registry field `reingestsIntoWiki: boolean` per kind; when true (and not overridden by the handler's return), after artifact commit a follow-on ingestion job is enqueued with the artifact as source; findings fan out into wiki pages citing `wiki_section_<artifactKind>` junctions. **MVP: every kind defaults `false`.** Re-ingestion turns on V1+ once we have confidence in the pattern + source-junction granularity is right.
 - **Passed on:** (a) Artifacts-are-wiki-pages (rejected above). (b) No re-ingestion ever — artifacts stand permanently alone. (c) Always-on re-ingestion for text artifacts at MVP.
 - **Why:** Defining the pattern now costs nothing (registry field + handler return override) and avoids having to retrofit it later. Defaulting all kinds off at MVP avoids the complexity + cost of a doubled ingestion pass until we've seen how users interact with artifacts in their dedicated UI modules. If users never ask "where did my research go in the wiki?", we may never turn re-ingestion on at all.
-- **Gives up:** MVP research outputs don't contribute to the compounding wiki — they're knowledge in the Research module but Muse can't reason over them in future conversations unless the user re-raises the topics. Explicit V1+ design debt to revisit.
-- **Revisit if:** Users want research findings in their wiki (enable for `research` specifically; observe quality and cost). Or if Muse's performance in future conversations suffers visibly from not having research findings in its KG context.
+- **Gives up:** MVP research outputs don't contribute to the compounding wiki — they're knowledge in the Research module but Audri can't reason over them in future conversations unless the user re-raises the topics. Explicit V1+ design debt to revisit.
+- **Revisit if:** Users want research findings in their wiki (enable for `research` specifically; observe quality and cost). Or if Audri's performance in future conversations suffers visibly from not having research findings in its KG context.
 
 ### UI module registry (considered, YAGNI'd for MVP)
 - **Chose:** No separate `uiModuleRegistry`. `pluginRegistry` covers queue-runnable capabilities only (Research, Podcasts, Gmail, Calendar, Briefs). Wiki and Todos are core built-in UI surfaces — always present, can't be uninstalled — with their data-fetching + filtering logic living client-side as ordinary queries against existing tables. No backend infrastructure for "UI modules that aren't plugins."
@@ -325,7 +325,7 @@ This is a companion to `todos.md` (decision checklist) and `architecture.md` (cu
 ### Capability-availability levels (vs. flat enabled/disabled)
 - **Chose:** Four layered levels — (1) System (registry has the entry), (2) Tier-granted (subscription unlocks it), (3) User-enabled (user has explicitly turned it on), (4) Connector-ready (required connectors currently connected). Backend enforces all four with level-specific error messages; call-agent prompt composes capability descriptions from level 4; fan-out prompt from level 3.
 - **Passed on:** (a) Flat enabled/disabled — single bit per user per plugin. (b) Two-level (enabled + available-given-connectors).
-- **Why:** The reasons a capability is unavailable differ in what the user can do about them: "upgrade your tier" vs. "enable this plugin" vs. "connect your Google account" are different flows. A single "disabled" bit collapses them. Level 4 vs. level 3 distinction for prompts matters — Muse shouldn't advertise an email plugin if Gmail isn't connected (she'd offer something Muse can't do), but fan-out SHOULD route commitments into the enabled plugin and surface a connect-prompt afterward (more useful than silently dropping the commitment).
+- **Why:** The reasons a capability is unavailable differ in what the user can do about them: "upgrade your tier" vs. "enable this plugin" vs. "connect your Google account" are different flows. A single "disabled" bit collapses them. Level 4 vs. level 3 distinction for prompts matters — Audri shouldn't advertise an email plugin if Gmail isn't connected (she'd offer something Audri can't do), but fan-out SHOULD route commitments into the enabled plugin and surface a connect-prompt afterward (more useful than silently dropping the commitment).
 - **Gives up:** More enforcement points; more plumbing in the enablement UX; more ways to get the levels out of sync.
 - **Revisit if:** N/A — this is the minimum structure that cleanly represents real user flows.
 
@@ -414,8 +414,8 @@ This is a companion to `todos.md` (decision checklist) and `architecture.md` (cu
 - **Revisit if:** Users repeatedly complain about "is it stuck?" — at that point cheapest fix is stage text, not true progress.
 
 ### No mid-call task initiation in `generic` calls; trial-artifact exception during `onboarding`
-- **Chose:** During `generic` calls, Muse cannot kick off agent_tasks mid-call. Requests get acknowledged conversationally ("I'll research that — you'll get a notification") and flow through fan-out's implicit-commitment path post-call. **Exception:** `onboarding` calls have a mid-call tool (`queue_trial_artifact`) that lets Muse insert agent_tasks rows during the call — by call end, trial artifacts are waiting on the user's home screen. Onboarding scaffolding instructs Muse to offer 1–3 such artifacts max.
-- **Passed on:** (a) Mid-call task initiation everywhere — adds a second write path to maintain, narrows the "no writes during calls" invariant, introduces race conditions ("actually, don't"), more state to track. (b) No mid-call initiation anywhere including onboarding — loses the strong first-impression moment of "you finished onboarding and Muse already did some things for you."
+- **Chose:** During `generic` calls, Audri cannot kick off agent_tasks mid-call. Requests get acknowledged conversationally ("I'll research that — you'll get a notification") and flow through fan-out's implicit-commitment path post-call. **Exception:** `onboarding` calls have a mid-call tool (`queue_trial_artifact`) that lets Audri insert agent_tasks rows during the call — by call end, trial artifacts are waiting on the user's home screen. Onboarding scaffolding instructs Audri to offer 1–3 such artifacts max.
+- **Passed on:** (a) Mid-call task initiation everywhere — adds a second write path to maintain, narrows the "no writes during calls" invariant, introduces race conditions ("actually, don't"), more state to track. (b) No mid-call initiation anywhere including onboarding — loses the strong first-impression moment of "you finished onboarding and Audri already did some things for you."
 - **Why:** Two different optimization targets. `generic` calls prioritize architectural simplicity + invariant cleanliness — post-call lag of 1–5 min for first task result is acceptable for ongoing usage. `onboarding` calls prioritize wow-factor — the user just spent time talking to a stranger; they need to see immediate value. Trial artifacts during onboarding deliver that immediacy without compromising the production invariant for the steady-state product.
 - **Gives up:** Code-path duplication — the onboarding scaffolding has a tool that the generic scaffolding doesn't, and the server validates the call-type at the tool endpoint. Slight risk that future call-types (V1+ contextual / task-specific) will want the same exception; need to be deliberate about which call-types unlock mid-call writes.
 - **Revisit if:** (a) Steady-state generic-call lag becomes a real pain point — flip to allow mid-call kickoff there too. (b) Onboarding trial artifacts don't move the needle on activation/retention — pull them and simplify back to no-exception.
@@ -431,7 +431,7 @@ This is a companion to `todos.md` (decision checklist) and `architecture.md` (cu
 - **Chose:** Slate Skills as a P0 backlog item for V1; do not include in MVP. Skills = context-aware capability suggestions the agent advertises based on what the user is currently doing (reviewing an artifact, looking at a page, etc.). Each Skill is a registered template that composes existing primitives — wiki write via fan-out, plugin invocation, or inline generation — without requiring new artifact infrastructure for lightweight cases.
 - **Passed on:** MVP inclusion. The infrastructure cost is genuinely small (a `skillRegistry` module + extension to call-agent prompt Layer 4 + a small seed set). UX value is significant — solves the "users don't know what to ask for" prompting-skill barrier.
 - **Why deferred:** Discipline on MVP scope. We've been steadily piling decisions to push things into V1+ to keep the MVP build focused; adding a new capability surface — even a small one — works against that discipline. Skills can ship in V1 as the first major UX-extension feature without affecting MVP foundation work. The architectural placement is clear (parallel to plugin registry, in Layer 4 of call-agent prompt) so V1 implementation has a known shape.
-- **Gives up:** A meaningful first-impression UX wow-factor in MVP that would rely on contextual proactiveness. MVP Muse will offer existing plugins (research) when contextually relevant but won't have the lightweight composed-action suggestions Skills enable.
+- **Gives up:** A meaningful first-impression UX wow-factor in MVP that would rely on contextual proactiveness. MVP Audri will offer existing plugins (research) when contextually relevant but won't have the lightweight composed-action suggestions Skills enable.
 - **Revisit if:** N/A — slated for V1 work, not actually deferred. The "if" is just timing.
 
 ### Agent-scope skip-default is on substance, not repetition (vs. user-scope's "wait for re-mention")

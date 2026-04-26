@@ -95,7 +95,7 @@ See `specs/flash-retrieval-prompt.md` for the authoritative contract. Summary:
 
 **Input:**
 
-- Transcript (turn-tagged, with explicit `User:` / `Muse:` speaker labels)
+- Transcript (turn-tagged, with explicit `User:` / `Audri:` speaker labels)
 - Wiki index: `(slug, title, type, parent_slug, agent_abstract)` for every active page under the user's `user_id + scope='user'`. No section content. No aliases column — aliases, if needed for recall, are inlined into `agent_abstract` at render time.
 - (KG candidate-retrieval system instruction — explicitly cached)
 

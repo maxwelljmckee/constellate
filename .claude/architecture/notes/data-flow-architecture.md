@@ -1,6 +1,6 @@
 # Data-flow architecture
 
-System-level view of how information moves through Constellate. This is the conceptual spine — most subsystems, SPECs, and UX surfaces derive from this flow.
+System-level view of how information moves through Audri. This is the conceptual spine — most subsystems, SPECs, and UX surfaces derive from this flow.
 
 ---
 
@@ -107,7 +107,7 @@ Four levels determine what's actually usable:
 
 Enforcement:
 - **Backend** (task dispatch validator) checks all four, rejecting at the highest unmet level with a message matched to the fix (upgrade tier / enable plugin / connect account).
-- **Call-agent system prompt** composes descriptions from level 4 only — Muse doesn't advertise what the user can't currently use.
+- **Call-agent system prompt** composes descriptions from level 4 only — Audri doesn't advertise what the user can't currently use.
 - **Fan-out prompt (Pro)** composes descriptions from level 3 (user-enabled) — commitments route into enabled plugins even if a connector is currently disconnected, so the user gets a "connect your account" prompt rather than a silent drop.
 
 At MVP, plugins are first-party (research only). V1 adds podcasts, email drafts, calendar events, briefs. Third-party / runtime-installable plugins are V1++ at earliest — deferred until app bundle size or install flexibility becomes a concrete constraint.
