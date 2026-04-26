@@ -1,0 +1,63 @@
+# Render Blueprint — defines audri-server (web) + audri-worker (background).
+# Apply via: Render dashboard → New → Blueprint → connect this repo.
+# Render reads this file from the repo root and provisions both services.
+#
+# Env vars marked `sync: false` are filled in via the Render dashboard per service.
+# `corepack enable` activates the pnpm version pinned in root package.json's
+# `packageManager` field. The `...` after a filter name pulls in workspace deps
+# (so @audri/shared builds before its consumers).
+
+services:
+  - type: web
+    name: audri-server
+    runtime: node
+    plan: starter # $7/mo, always-on, 512MB RAM
+    region: oregon
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @audri/server... build
+    startCommand: pnpm --filter @audri/server start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Render auto-injects PORT (typically 10000); main.ts reads from process.env.PORT
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SENTRY_DSN_SERVER
+        sync: false # leave blank until you create the Sentry project
+
+  - type: worker
+    name: audri-worker
+    runtime: node
+    plan: starter # $7/mo, always-on
+    region: oregon
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @audri/worker... build
+    startCommand: pnpm --filter @audri/worker start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false # worker calls Flash + Pro for ingestion (Slice 4+)
+      - key: SENTRY_DSN_SERVER
+        sync: false
