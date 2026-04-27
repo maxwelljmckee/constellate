@@ -318,6 +318,7 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | Batch API usage for non-latency tasks | P2 | M | Cost-Business | Overnight briefs, bulk reprocessing. Source: §17. |
 | Regeneration debouncing | P2 | S | Cost-Business | Summary + index regen triggered on write but coalesced. Source: §17. |
 | Per-agent cost attribution | P2 | S | Cost-Business | `agent_id` on usage_events already carries this; surface V1+. Source: §15b. |
+| Gemini explicit caching for ingestion scaffolding | P1 | M | Cost-Business + Infra | Cache the Flash candidate retrieval, Pro fan-out, agent-scope, and onboarding scaffolding prompts via Gemini's explicit caching API. Recurring Graphile job refreshes TTL. Per-prompt-version cache namespace. Estimated savings ~75% on input-token cost for ingestion (largest cost line). Worth doing once daily call volume crosses ~50/day OR monthly Gemini bill crosses ~$50. Deferred from slice 4 (2026-04-27) — at MVP volume the savings is cents per day vs. ~1-2 hours of infra to wire correctly. |
 
 ---
 

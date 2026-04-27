@@ -8,6 +8,20 @@
       "when": 1777238819790,
       "tag": "0000_even_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777321115513,
+      "tag": "0001_spotty_salo",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777321499795,
+      "tag": "0002_daffy_mister_fear",
+      "breakpoints": true
     }
   ]
 }

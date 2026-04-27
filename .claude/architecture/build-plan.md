@@ -126,20 +126,24 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 ---
 
-## Slice 4 — Ingestion pipeline
+## Slice 4 — Ingestion pipeline (✅ done 2026-04-27)
 
 **Goal:** transcripts auto-fan-out into wiki content. Validate by SQL queries.
 
-- ⏺️ Worker: Graphile Worker properly configured (queues, concurrency, recurring scanner job). Per-user `queue_name` for ingestion (`ingestion-${user_id}`).
-- ⏺️ Worker: ingestion job handler — reads transcript by id, runs Flash candidate retrieval (real Gemini call against the locked spec), runs Pro fan-out (real Gemini call against the locked spec), backend transactional commit (sectioned writes + source junctions + wiki_log).
-- ⏺️ Worker: Flash + Pro prompts drafted as actual system prompt strings against the locked decision rules in `specs/flash-retrieval-prompt.md` + `specs/fan-out-prompt.md`. Loaded from prompt files at startup.
-- ⏺️ Server: `POST /calls/:session_id/end` enqueues ingestion job atomically with transcript commit (single transaction).
-- ⏺️ Worker: agent-scope ingestion pass runs in parallel with user-scope (per `specs/agent-scope-ingestion.md`). Single Flash call; observation writes to active agent's subtree.
-- ⏺️ Worker: prompts cached via Gemini explicit cache; cache lifecycle managed by a recurring Graphile job (refreshes TTL every N minutes).
+- ✅ Worker: Graphile Worker with per-user `queue_name` for ingestion (`ingestion-${user_id}`); separate non-queued generate_title_summary task; conservative retry (max_attempts=2 ingestion, 3 title-summary).
+- ✅ Worker: ingestion job handler — reads transcript, runs Flash candidate retrieval (real Gemini call) → Pro fan-out (real Gemini call, gemini-3.1-pro-preview) → transactional commit (sectioned writes + source junctions + wiki_log kind='ingest').
+- ✅ Worker: Flash + Pro prompts drafted as substantial system prompts per `specs/flash-retrieval-prompt.md` + `specs/fan-out-prompt.md`. Iteratively tuned during slice — Pro prompt's "atomic claims" framing was widened to also capture frameworks, theories, extended reasoning + section-content depth guidance.
+- ✅ Server: `POST /calls/:session_id/end` enqueues ingestion + title-summary jobs atomically with transcript commit via `graphile_worker.add_job` in same Drizzle transaction.
+- ✅ Worker: agent-scope ingestion pass runs in parallel via `Promise.allSettled` per `specs/agent-scope-ingestion.md`. Single Flash call; writes observations to active agent's subtree (`scope='agent'`, `agent_id`); wiki_log kind='agent_scope_ingest'. Independent failure isolation — one pass's failure doesn't block the other.
+- ✅ Server: title/summary moved from in-process fire-and-forget into Graphile (kind='generate_title_summary') for durability + retries.
+- ✴️ Gemini explicit caching for scaffolding — **deferred to backlog** (P1, Cost/Infra). At MVP volume the savings is cents/day vs. ~1-2 hrs of cache lifecycle infra; revisit when daily call volume crosses ~50/day.
 
-**Demo:** real conversation about Sarah and Consensus → check DB → person page for Sarah created with sections; project page for Consensus created; sources cited in `wiki_section_transcripts`. Agent-scope page has Assistant's observations.
+**Pre-slice infra also shipped:**
+- `packages/shared` extracted to hold Drizzle schema + db client + Gemini client. Worker now consumes the same schema as server; future plugins (research in slice 7) inherit this.
 
-**Estimated:** 7–10 days. This is the heaviest slice; the ingestion pipeline is the central machine.
+**Demo (validated live 2026-04-27):** 7-min call about Consensus project → 3 interlinked pages (consensus project + interdependence concept + social-technology concept) × 6 specific-titled sections with markdown formatting + transcript citations. Multi-target routing working; user's distinctive phrasing ("scaling of human alignment", "interdependence is not the same thing as cooperation") preserved.
+
+**Estimated:** 7–10 days. **Actual:** ~6 hours of code + ~1 hour of pooler/billing/prompt tuning.
 
 ---
 

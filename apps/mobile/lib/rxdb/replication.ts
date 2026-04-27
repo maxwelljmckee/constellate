@@ -1,0 +1,65 @@
+// Bidirectional Supabase replication for the wiki collections.
+//
+// Pull: server-side INSERT/UPDATE flows down to client. Includes ingestion
+// fan-out writes appearing live during a call.
+// Push: client-side UPDATE flows up. Markdown editor edits land here.
+//
+// RLS gates what the client can read/write — auth.uid() = user_id matches via
+// the JWT carried in the Supabase client. Server (service_role) bypasses RLS.
+//
+// MVP storage is in-memory; each cold start re-syncs from server. Replication
+// identifier is versioned so a schema bump can force a full re-sync.
+
+import { SupabaseReplication } from 'rxdb-supabase';
+import { supabase } from '../supabase';
+import { getDatabase } from './database';
+
+const REPLICATION_VERSION = 'v1';
+
+export interface ReplicationHandle {
+  // biome-ignore lint/suspicious/noExplicitAny: SupabaseReplication is a generic-heavy type from rxdb-supabase
+  replications: any[];
+  stop: () => Promise<void>;
+}
+
+let _active: ReplicationHandle | null = null;
+
+export async function startReplication(): Promise<ReplicationHandle> {
+  if (_active) return _active;
+
+  const db = await getDatabase();
+
+  const wikiPagesRepl = new SupabaseReplication({
+    supabaseClient: supabase,
+    collection: db.collections.wiki_pages,
+    replicationIdentifier: `audri:wiki_pages:${REPLICATION_VERSION}`,
+    deletedField: '_deleted',
+    pull: { batchSize: 50, lastModifiedField: 'updated_at' },
+    push: {},
+  });
+
+  const wikiSectionsRepl = new SupabaseReplication({
+    supabaseClient: supabase,
+    collection: db.collections.wiki_sections,
+    replicationIdentifier: `audri:wiki_sections:${REPLICATION_VERSION}`,
+    deletedField: '_deleted',
+    pull: { batchSize: 100, lastModifiedField: 'updated_at' },
+    push: {},
+  });
+
+  _active = {
+    replications: [wikiPagesRepl, wikiSectionsRepl],
+    stop: async () => {
+      await Promise.all([wikiPagesRepl.cancel(), wikiSectionsRepl.cancel()]);
+      _active = null;
+    },
+  };
+
+  return _active;
+}
+
+export async function stopReplication(): Promise<void> {
+  if (_active) {
+    await _active.stop();
+  }
+}

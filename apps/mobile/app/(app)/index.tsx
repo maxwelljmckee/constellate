@@ -5,8 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PluginTile } from '../../components/PluginTile';
 import { useCallStore } from '../../lib/useCallStore';
 import { firstNameFromUser, timeAwareGreeting } from '../../lib/greeting';
+import { useRxdbReady } from '../../lib/rxdb/useRxdbReady';
 import { supabase } from '../../lib/supabase';
 import { useMe } from '../../lib/useMe';
+import { usePluginOverlay } from '../../lib/usePluginOverlay';
 import { useSession } from '../../lib/useSession';
 
 export default function HomeScreen() {
@@ -19,6 +21,10 @@ export default function HomeScreen() {
   const firstName = firstNameFromUser(sessionUser);
 
   const startCall = useCallStore((s) => s.startCall);
+  const showOverlay = usePluginOverlay((s) => s.show);
+
+  // Boot RxDB sync on home so the wiki overlay has data ready when opened.
+  useRxdbReady();
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -57,7 +63,7 @@ export default function HomeScreen() {
 
         <View className="mt-10 flex-1 px-6">
           <View className="flex-row gap-3">
-            <PluginTile label="Wiki" icon="library-outline" />
+            <PluginTile label="Wiki" icon="library-outline" onPress={() => showOverlay('wiki')} />
             <PluginTile label="Todos" icon="checkbox-outline" />
           </View>
           <View className="mt-3 flex-row gap-3">

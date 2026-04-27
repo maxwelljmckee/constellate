@@ -21,6 +21,7 @@
 import { callTranscripts, db, eq } from '@audri/shared/db';
 import type { Task } from 'graphile-worker';
 import { logger } from '../logger.js';
+import { runAgentScopeIngestion } from '../ingestion/agent-scope.js';
 import { fetchCandidatePages } from '../ingestion/candidate-pages.js';
 import { commitFanOut } from '../ingestion/commit.js';
 import {
@@ -62,43 +63,81 @@ export const ingestion: Task = async (payload, helpers) => {
     return;
   }
 
-  // 2. Fetch wiki index for the user.
+  const callMetadata = {
+    started_at: transcriptRow.startedAt.toISOString(),
+    ended_at: (transcriptRow.endedAt ?? new Date()).toISOString(),
+    end_reason: transcriptRow.endReason ?? 'user_ended',
+  };
+
+  // ── User-scope and agent-scope passes run in parallel. Independent
+  //    lifecycles per specs/agent-scope-ingestion.md — one failing doesn't
+  //    block the other.
+  const [userScopeResult, agentScopeResult] = await Promise.allSettled([
+    runUserScopePipeline(p, transcript, transcriptRow.startedAt, log),
+    runAgentScopeIngestion({
+      transcriptId: p.transcriptId,
+      userId: p.userId,
+      agentId: p.agentId,
+      transcript,
+      callMetadata,
+      userFirstName: null, // V1+ enrich via supabase admin lookup
+    }).then((r) => {
+      log('agent-scope complete', { ...r });
+      return r;
+    }),
+  ]);
+
+  if (userScopeResult.status === 'rejected') {
+    logger.error({ err: userScopeResult.reason }, 'user-scope pipeline failed');
+  }
+  if (agentScopeResult.status === 'rejected') {
+    logger.error({ err: agentScopeResult.reason }, 'agent-scope pipeline failed');
+  }
+
+  // If BOTH fail, throw so graphile retries.
+  if (userScopeResult.status === 'rejected' && agentScopeResult.status === 'rejected') {
+    throw userScopeResult.reason;
+  }
+};
+
+async function runUserScopePipeline(
+  p: IngestionPayload,
+  transcript: IngestionTranscriptTurn[],
+  callTimestamp: Date,
+  log: (msg: string, extra?: Record<string, unknown>) => void,
+) {
   const wikiIndex = await fetchUserWikiIndex(p.userId);
   log(`wiki index size = ${wikiIndex.length}`);
 
-  // 3. Flash candidate retrieval.
   const candidates = await retrieveCandidates(transcript, wikiIndex);
-  log(`flash candidates: touched=${candidates.touched_pages.length}, new=${candidates.new_pages.length}`);
+  log(
+    `flash candidates: touched=${candidates.touched_pages.length}, new=${candidates.new_pages.length}`,
+  );
 
   if (candidates.touched_pages.length === 0 && candidates.new_pages.length === 0) {
     log('noteworthiness gate failed — no fan-out');
     return;
   }
 
-  // 4. Fully-joined candidate pages for Pro.
-  const touchedSlugs = candidates.touched_pages.map((p) => p.slug);
+  const touchedSlugs = candidates.touched_pages.map((tp) => tp.slug);
   const candidatePages = await fetchCandidatePages(p.userId, touchedSlugs);
   log(`fetched ${candidatePages.length}/${touchedSlugs.length} candidate pages`);
 
-  // 5. Pro fan-out.
   const fanOut = await runFanOut({
     transcript,
     newPages: candidates.new_pages,
     touchedPages: candidatePages,
-    callTimestamp: transcriptRow.startedAt,
+    callTimestamp,
   });
   log(
     `pro fan-out: creates=${fanOut.creates.length}, updates=${fanOut.updates.length}, skipped=${fanOut.skipped.length}`,
   );
 
-  // 6. Transactional commit.
   const commitResult = await commitFanOut({
     userId: p.userId,
     transcriptId: p.transcriptId,
     fanOut,
     candidatePages,
   });
-  log('commit complete', { ...commitResult });
-
-  // 7. Agent-scope pass — lands in task #49.
-};
+  log('user-scope commit complete', { ...commitResult });
+}

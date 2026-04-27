@@ -1,6 +1,7 @@
 import { run } from 'graphile-worker';
 import { logger } from './logger.js';
 import { initSentry } from './observability/sentry.js';
+import { generateTitleSummary } from './tasks/generate-title-summary.js';
 import { heartbeat } from './tasks/heartbeat.js';
 import { ingestion } from './tasks/ingestion.js';
 
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
     taskList: {
       heartbeat,
       ingestion,
+      generate_title_summary: generateTitleSummary,
       // agent_task_dispatch lands in slice 7 alongside the research handler.
     },
   });

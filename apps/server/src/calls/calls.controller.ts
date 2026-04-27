@@ -14,7 +14,6 @@ import { getSupabaseAdmin } from '../auth/supabase.client.js';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard.js';
 import { CurrentUser } from '../auth/user.decorator.js';
 import { CallsService } from './calls.service.js';
-import { generateTitleSummary } from './title-summary.js';
 import type { TranscriptTurn } from './transcript.types.js';
 
 // Pull a first name from Supabase Auth user_metadata (Google OAuth populates
@@ -109,49 +108,36 @@ export class CallsController {
         .where(eq(callTranscripts.sessionId, sessionId));
 
       if (!cancelled && transcript.length > 0) {
-        const payload = JSON.stringify({
+        const ingestionPayload = JSON.stringify({
           transcriptId: existing.id,
           userId: user.id,
           agentId: existing.agentId,
         });
-        // Per-user FIFO via queue_name = `ingestion-${user_id}`. Different
-        // users' ingestion runs in parallel; same user is serialized.
+        // Ingestion job: per-user FIFO via queue_name = `ingestion-${user_id}`.
         await tx.execute(sql`
           SELECT graphile_worker.add_job(
             'ingestion',
-            ${payload}::json,
+            ${ingestionPayload}::json,
             queue_name => ${`ingestion-${user.id}`},
             max_attempts => 2
+          )
+        `);
+
+        // Title + summary job: lighter, no per-user serialization (independent
+        // of ingestion; cosmetic field). Same retry semantics.
+        const firstName = await fetchUserFirstName(user.id);
+        const titlePayload = JSON.stringify({ sessionId, userFirstName: firstName });
+        await tx.execute(sql`
+          SELECT graphile_worker.add_job(
+            'generate_title_summary',
+            ${titlePayload}::json,
+            max_attempts => 3
           )
         `);
       }
     });
 
     this.logger.log({ sessionId, userId: user.id, cancelled }, 'call ended');
-
-    // Title + summary via Flash, fire-and-forget. Don't block /end on it.
-    // Slice 4 will move this into the Graphile worker alongside the
-    // ingestion job for durability + retries.
-    if (!body.cancelled) {
-      void (async () => {
-        try {
-          const firstName = await fetchUserFirstName(user.id);
-          const ts = await generateTitleSummary(transcript, firstName);
-          if (!ts) return;
-          await db
-            .update(callTranscripts)
-            .set({ title: ts.title || null, summary: ts.summary || null })
-            .where(eq(callTranscripts.sessionId, sessionId));
-          this.logger.log({ sessionId }, 'title + summary saved');
-        } catch (err) {
-          this.logger.warn(
-            { sessionId, err: err instanceof Error ? err.message : err },
-            'title + summary post-call failed',
-          );
-        }
-      })();
-    }
-
     return { status: 'ended', sessionId };
   }
 }
