@@ -342,7 +342,7 @@ export async function runFanOut(
 
   const userMessage = `# Call timestamp\n${input.callTimestamp.toISOString()}\n\n# new_pages (proposed by Flash)\n${JSON.stringify(input.newPages, null, 2)}\n\n# touched_pages (fully joined)\n${JSON.stringify(input.touchedPages, null, 2)}\n\n# Transcript\n\n${flat}`;
 
-  const resp = await getGeminiClient().models.generateContent({
+  const resp = await callProWithRetry({
     model: PRO_MODEL,
     contents: [{ role: 'user', parts: [{ text: userMessage }] }],
     config: {
@@ -460,4 +460,35 @@ export async function runFanOut(
     updates: Array.isArray(parsed.updates) ? (parsed.updates as PageUpdate[]) : [],
     skipped: Array.isArray(parsed.skipped) ? (parsed.skipped as SkippedClaim[]) : [],
   };
+}
+
+// Pro calls can run long enough to hit undici's default 5-min headers timeout
+// or other transient network errors. Retry once on those — content errors
+// (bad JSON, empty response) bubble through without retry since they signal
+// model issues, not transport.
+async function callProWithRetry(
+  // biome-ignore lint/suspicious/noExplicitAny: matches @google/genai params shape
+  params: any,
+  // biome-ignore lint/suspicious/noExplicitAny: matches @google/genai response shape
+): Promise<any> {
+  try {
+    return await getGeminiClient().models.generateContent(params);
+  } catch (err) {
+    if (!isTransientFetchError(err)) throw err;
+    logger.warn({ err }, 'pro fan-out: transient fetch error, retrying once');
+    await new Promise((r) => setTimeout(r, 2000));
+    return getGeminiClient().models.generateContent(params);
+  }
+}
+
+function isTransientFetchError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message ?? '';
+  if (msg.includes('fetch failed')) return true;
+  if (msg.includes('Headers Timeout')) return true;
+  if (msg.includes('UND_ERR')) return true;
+  // Walk the cause chain — undici nests its specific error types there.
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause && cause !== err) return isTransientFetchError(cause);
+  return false;
 }

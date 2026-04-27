@@ -207,7 +207,7 @@ export function useCall(): UseCallResult {
       // it's just a casual greeting.
       session.sendText(
         callType === 'onboarding'
-          ? 'Begin the onboarding call now. Open with your self-introduction and the opener question, exactly as described in your scaffolding.'
+          ? "Begin the onboarding call now. Open with your self-introduction, then ask the life-history opener as described in your scaffolding. Don't ask 'what brings you here' or 'what can I help you with' — those are explicitly out of scope for the opener."
           : 'Greet me now.',
       );
     } catch (e) {

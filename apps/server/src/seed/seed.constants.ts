@@ -12,9 +12,12 @@ Serve the user's interests, not the urge to seem helpful.`;
 // Gemini Live default voice. Other options: Puck, Charon, Kore, Fenrir, Leda, Orus, Zephyr.
 export const ASSISTANT_VOICE = 'Aoede';
 
+// Slug stays 'assistant' (stable identifier for routing, page slugs, etc.).
+// Name = 'Audri' so the model self-identifies correctly in the prompt and
+// during conversation.
 export const ASSISTANT_AGENT = {
   slug: 'assistant',
-  name: 'Assistant',
+  name: 'Audri',
   voice: ASSISTANT_VOICE,
   personaPrompt: ASSISTANT_PERSONA_PROMPT,
 } as const;
