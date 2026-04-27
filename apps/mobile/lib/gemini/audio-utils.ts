@@ -27,16 +27,16 @@ export function base64ToInt16Array(base64: string): Int16Array {
   return new Int16Array(bytes.buffer);
 }
 
-// RMS amplitude on Float32 mic samples, normalized to [0, 1].
-// Conservative scale — typical voice peaks around 0.3-0.5 in normalized terms,
-// so we boost by 2.5x and clamp.
-export function rmsAmplitude(samples: Float32Array): number {
+// PEAK amplitude — absolute max sample magnitude in the window. Better
+// discriminator for "is user speaking" than RMS: voice plosives spike to
+// 0.3+ while continuous echo (post-AEC) and ambient music typically stay
+// under 0.05. Used for both barge-in triggers and orb glow level.
+export function peakAmplitude(samples: Float32Array): number {
   if (samples.length === 0) return 0;
-  let sum = 0;
+  let max = 0;
   for (let i = 0; i < samples.length; i++) {
-    const s = samples[i] ?? 0;
-    sum += s * s;
+    const a = Math.abs(samples[i] ?? 0);
+    if (a > max) max = a;
   }
-  const rms = Math.sqrt(sum / samples.length);
-  return Math.min(1, rms * 2.5);
+  return Math.min(1, max);
 }

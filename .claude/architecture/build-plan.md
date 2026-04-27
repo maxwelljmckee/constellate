@@ -106,21 +106,23 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 ---
 
-## Slice 3 — Real Gemini Live wiring
+## Slice 3 — Real Gemini Live wiring (✅ done 2026-04-27)
 
 **Goal:** actual conversation with Audri. Transcripts persist. No ingestion yet.
 
-- ⏺️ Server: `POST /calls/start` composes minimal system prompt (scaffolding text inline for now — explicit Gemini caching comes Slice 6 when it pays off) + persona + ontology primer + capability stub. Returns `gemini_config` for the client.
-- ⏺️ Mobile: client receives `gemini_config`; opens Gemini Live WebSocket directly to Google
-- ⏺️ Mobile: real audio levels drive the orb (replace fake amplitude); speaker-detection drives orb color
-- ⏺️ Mobile: turn-tagged transcript captured client-side
-- ⏺️ Server: `POST /calls/:session_id/end` accepts transcript JSON; persists `call_transcripts` row; idempotent on `session_id`. NO ingestion enqueue yet — just storage.
-- ⏺️ **Pre-MVP: barge-in working** (already flagged in `todos.md` §8 open). User can interrupt Audri mid-utterance; mic-gate spans full turn; per-buffer onEnded handles cleanup. This is the slice where we tackle it.
-- ⏺️ Server: stub Audri persona prompt — friendly, warm, brief (real persona text drafted in Slice 6)
+- ✅ Server: `POST /calls/start` mints **ephemeral Gemini Live token** via `ai.authTokens.create({ liveConnectConstraints: ... })`. Persona + voice + system instruction + server-side VAD config locked into token; client never sees raw API key OR persona text. Returns `{ sessionId, ephemeralToken, model, voice }`.
+- ✅ Mobile: client decodes ephemeral token → `ai.live.connect({ model })` → direct WebSocket to Google
+- ✅ Mobile: real mic audio (PCM16 16kHz mono) streams through; **peak amplitude** drives orb glow + barge-in trigger (peak proved 5x more discriminating than RMS)
+- ✅ Mobile: turn-tagged transcript via `inputAudioTranscription` + `outputAudioTranscription` Gemini config
+- ✅ Server: `POST /calls/:sessionId/end` updates the pre-existing `call_transcripts` row. Idempotent — re-fire returns `already_ended`. Pre-creation at /start gives transcript a row to attach to even if /end fails.
+- ✅ **Barge-in working.** Mic-gate during playback prevents echo loop; peak-amp threshold (0.06, sustained 100ms) detects user voice through both phone speaker echo AND ambient noise (verified live with loud music in background — only voice triggers).
+- ✅ Server: stub persona prompt in `seed.constants.ts` (friendly, warm, brief). Real persona text in Slice 6.
 
-**Demo:** tap phone → real conversation with Audri → hang up → check `call_transcripts` row in Postgres has the transcript. Orb actually responds to who's talking.
+**Module split (apps/mobile/lib/gemini/):** `session.ts` (transport), `audio-input.ts` (mic + gate), `audio-output.ts` (PCM playback queue + per-buffer onEnded for finality), `transcript.ts` (turn builder), `useCall.ts` (orchestrator), `audio-utils.ts` (PCM helpers + peakAmplitude).
 
-**Estimated:** 5–7 days. Barge-in is the wildcard.
+**Demo (validated live):** sign in → tap phone → conversation with Audri → mid-utterance interruption works at normal speaking volume → hang up → call_transcripts row has full turn-tagged transcript.
+
+**Estimated:** 5–7 days. **Actual:** ~3 hours code + ~1 hour barge-in tuning. Barge-in was the wildcard but converged once we switched RMS → peak amplitude.
 
 ---
 

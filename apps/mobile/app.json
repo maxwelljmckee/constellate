@@ -11,7 +11,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.audri.app",
-      "appleTeamId": "ZKPW88L5T6"
+      "appleTeamId": "ZKPW88L5T6",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Audri needs microphone access so you can talk with it during voice calls.",
+        "UIBackgroundModes": ["audio"]
+      }
     },
     "android": {
       "adaptiveIcon": {

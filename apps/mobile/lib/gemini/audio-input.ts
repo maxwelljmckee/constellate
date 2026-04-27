@@ -6,7 +6,7 @@
 // gated=false the moment we detect user speech.
 
 import { AudioManager, AudioRecorder } from 'react-native-audio-api';
-import { float32ToPcm16, pcm16ToBase64, rmsAmplitude } from './audio-utils';
+import { float32ToPcm16, peakAmplitude, pcm16ToBase64 } from './audio-utils';
 
 export const MIC_SAMPLE_RATE = 16000;
 const MIC_BUFFER_LENGTH = 1600; // 100ms at 16kHz
@@ -54,8 +54,9 @@ export function createAudioInput(): AudioInputHandle {
         { sampleRate: MIC_SAMPLE_RATE, bufferLength: MIC_BUFFER_LENGTH, channelCount: 1 },
         ({ buffer }) => {
           const float32 = buffer.getChannelData(0);
-          // Always compute amplitude (orb feedback even when gated).
-          emitAmp(rmsAmplitude(float32));
+          // Peak amplitude: discriminates voice from steady echo much better
+          // than RMS. Used for both barge-in triggers and orb glow.
+          emitAmp(peakAmplitude(float32));
           if (gated) return;
           const pcm16 = float32ToPcm16(float32);
           emitFrame(pcm16ToBase64(pcm16));

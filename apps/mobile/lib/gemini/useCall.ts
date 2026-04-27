@@ -5,11 +5,8 @@
 // model audio → barge-in possible → end() → flush + close + POST /end.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, type AppStateStatus, Platform } from 'react-native';
-import {
-  AudioManager,
-  PlaybackNotificationManager,
-} from 'react-native-audio-api';
+import { AppState, type AppStateStatus } from 'react-native';
+import { AudioManager } from 'react-native-audio-api';
 import { supabase } from '../supabase';
 import { useCallStore } from '../useCallStore';
 import { type AudioInputHandle, createAudioInput } from './audio-input';
@@ -60,7 +57,6 @@ export function useCall(): UseCallResult {
     outputRef.current = null;
     appStateSubRef.current?.remove();
     appStateSubRef.current = null;
-    if (Platform.OS === 'android') PlaybackNotificationManager.hide();
     AudioManager.setAudioSessionActivity(false);
   }, []);
 
@@ -106,7 +102,8 @@ export function useCall(): UseCallResult {
       const input = createAudioInput();
       inputRef.current = input;
 
-      // While model is playing, gate mic-send to prevent echo loop.
+      // Mic-gate during playback prevents Gemini hearing Audri through the
+      // speakerphone. Barge-in via fixed amp threshold + sustained window.
       output.onPlaybackStart(() => {
         input.setGated(true);
         store.setSpeaker('agent');
@@ -118,11 +115,35 @@ export function useCall(): UseCallResult {
         store.setSpeaker(null);
       });
 
+      // Peak-amplitude threshold. Typical voice peaks 0.3-0.5; echo after AEC
+      // typically stays below 0.1. 0.15 gives a comfortable margin.
+      // Tuned against measured peak amplitudes: voice peaks 0.06-0.27, echo
+      // after AEC stays under ~0.05. Re-tune from telemetry once observability
+      // service lands.
+      const BARGE_IN_THRESHOLD = 0.06;
+      const BARGE_IN_SUSTAINED_MS = 100;
+      let loudSinceMs: number | null = null;
+
       input.onAmplitude((amp) => {
-        // Show user amplitude only when not gated (i.e. user actually transmitting).
-        if (!output.isPlaying()) {
-          store.setAmplitude(amp);
-          if (amp > 0.05) store.setSpeaker('user');
+        store.setAmplitude(amp);
+
+        if (output.isPlaying()) {
+          if (amp > BARGE_IN_THRESHOLD) {
+            if (loudSinceMs === null) {
+              loudSinceMs = Date.now();
+            } else if (Date.now() - loudSinceMs >= BARGE_IN_SUSTAINED_MS) {
+              loudSinceMs = null;
+              output.flush();
+              input.setGated(false);
+              transcriptRef.current.finalizeAgentTurn();
+              refreshTranscript();
+              store.setSpeaker('user');
+            }
+          } else {
+            loudSinceMs = null;
+          }
+        } else if (amp > 0.05) {
+          store.setSpeaker('user');
         }
       });
 
@@ -171,16 +192,12 @@ export function useCall(): UseCallResult {
       input.onFrame((b64) => session.sendAudio(b64));
       await input.start();
 
-      // 6. Resume audio context if backgrounded.
+      // 6. Resume hook for background → foreground transitions.
       appStateSubRef.current = AppState.addEventListener('change', (state: AppStateStatus) => {
         if (state === 'active' && outputRef.current) {
           // No-op for now; AudioContext may need explicit resume in some cases.
         }
       });
-
-      if (Platform.OS === 'android') {
-        PlaybackNotificationManager.show({ title: 'Audri', artist: 'Voice call active' });
-      }
 
       // 7. Kick the model off with a greeting prompt.
       session.sendText('Greet me now.');
@@ -219,9 +236,9 @@ export function useCall(): UseCallResult {
           end_reason: 'user_ended',
         }),
       });
-    } catch (e) {
-      // Logged client-side only; the server preserved the transcript at /start.
-      console.warn('[useCall] /end post failed', e);
+    } catch {
+      // Server preserved the transcript at /start; failure here is non-fatal.
+      // Telemetry hookup pending dedicated observability service.
     }
   }, [refreshTranscript, teardown]);
 

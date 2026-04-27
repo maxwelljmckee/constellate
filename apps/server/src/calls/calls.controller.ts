@@ -15,6 +15,8 @@ import { SupabaseAuthGuard } from '../auth/supabase-auth.guard.js';
 import { db } from '../db/client.js';
 import { callTranscripts } from '../db/schema/index.js';
 import { CallsService } from './calls.service.js';
+import { generateTitleSummary } from './title-summary.js';
+import type { TranscriptTurn } from './transcript.types.js';
 
 interface StartCallBody {
   agent_slug?: string;
@@ -22,7 +24,7 @@ interface StartCallBody {
 }
 
 interface EndCallBody {
-  transcript: unknown;
+  transcript: TranscriptTurn[];
   tool_calls?: unknown;
   started_at: string;
   ended_at: string;
@@ -72,10 +74,12 @@ export class CallsController {
       return { status: 'already_ended', sessionId };
     }
 
+    const transcript = Array.isArray(body.transcript) ? body.transcript : [];
+
     await db
       .update(callTranscripts)
       .set({
-        content: (body.transcript as object) ?? [],
+        content: transcript,
         toolCalls: (body.tool_calls as object) ?? null,
         endedAt: new Date(body.ended_at),
         endReason: body.end_reason ?? 'user_ended',
@@ -85,6 +89,20 @@ export class CallsController {
       .where(eq(callTranscripts.sessionId, sessionId));
 
     this.logger.log({ sessionId, userId: user.id }, 'call ended');
+
+    // Title + summary via Flash. Cancelled / empty calls skipped. Failure is
+    // non-fatal — row stays with null title/summary.
+    if (!body.cancelled) {
+      const ts = await generateTitleSummary(transcript);
+      if (ts) {
+        await db
+          .update(callTranscripts)
+          .set({ title: ts.title || null, summary: ts.summary || null })
+          .where(eq(callTranscripts.sessionId, sessionId));
+        this.logger.log({ sessionId, title: ts.title }, 'title + summary saved');
+      }
+    }
+
     // Slice 4: enqueue ingestion job here.
     return { status: 'ended', sessionId };
   }

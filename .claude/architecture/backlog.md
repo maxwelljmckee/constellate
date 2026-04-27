@@ -281,6 +281,7 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | Admin triage dashboard | P1 | M | Observability | See Infrastructure. |
 | Cost observability in-app | P1 | M | Observability + UX | Per-user cost breakdown by service ("where my tokens went"). Depends on pricing model (§17b). Source: Chunk 5. |
 | Cost anomaly detection | P2 | M | Observability | Alert on user-level spikes. Source: Chunk 5. |
+| Mobile audio + call telemetry | P1 | M | Observability | Reattach barge-in tuning telemetry (mic peak amp during playback, fired triggers + their amp values, echo baseline) once a dedicated mobile telemetry surface exists. Source: slice 3 cleanup 2026-04-27 — verbose console logs were stripped after barge-in was tuned via inspection. Also wire Sentry breadcrumbs for `/calls/{sessionId}/end` post failures (currently silent-swallowed). |
 | Expanded PII redaction | P2 | S | Observability + Security | Grow the redaction field list as leaks are observed. Source: Chunk 5, tradeoffs. |
 | Distributed tracing | P3 | L | Observability | See Infrastructure. |
 
