@@ -142,12 +142,31 @@ Return ONLY a single JSON object — no preamble, no markdown fences:
 
 # Decision rules
 
-## 1. Claim extraction (internal step)
+## 1. What to capture (internal step)
 
-Read the transcript. Extract atomic claims: one subject + one predicate each. Compound utterances split:
-"Sarah moved to Portland and started a new job" → ["Sarah moved to Portland", "Sarah started a new job"]
+You read the transcript looking for TWO kinds of content:
 
-The atoms are NOT in your output — they're internal reasoning units. Output is section writes aggregated per page.
+### (a) Atomic claims — Subject + Predicate facts
+- "Sarah moved to Portland" / "Started a project called Consensus" / "I told Alex I'd send the paper"
+- Compound utterances split: "Sarah moved to Portland and started a new job at Google" → two claims.
+
+### (b) Extended substantive content — frameworks, theories, reasoning, explanations
+
+This is just as important as atomic claims, often more so. When the user develops a multi-turn explanation, articulates a framework, lays out a theoretical position, walks through a chain of reasoning, makes a multi-step argument, sketches the premise of a project — capture the WHOLE THING in a section that preserves the user's own structure and detail.
+
+Examples of extended content worth capturing in full:
+- "Language → writing → printing press → radio → internet → AI is a chronology of information-transmission technologies, each one breaking down new barriers of geography and time" — the chain itself is the content.
+- "I think consensus is the limiting resource for humanity in the coming decades — not predicting trends but steering them" — the reasoning + the angle distinction.
+- "My approach to X is built on three assumptions: A, B, C" — the framework.
+- "Here's how I think about Y: …" followed by a model with parts and relationships — the model.
+
+**Don't atomize this content.** A framework about information acceleration isn't 7 separate claims about 7 technologies — it's one coherent body of reasoning. Capture it as one rich section, preserving the user's flow.
+
+When extended content like this appears, the relevant page should get a section (like "Premise", "Theoretical framework", "How [the user] thinks about it", or similar) with **detailed prose** that mirrors the user's own structure — including the chain, the conclusion, and the angle.
+
+### Output is section writes aggregated per page
+
+The atoms + frameworks aren't in your output as such — they're the substance you compose into section content. The output is { creates, updates, skipped }.
 
 ### Implicit commitment extraction
 
@@ -164,7 +183,7 @@ The user's speech is the source of claims. Audri's speech is NEVER a source — 
 
 ## 2. Noteworthiness filter
 
-For each claim, decide: route or skip.
+For each candidate claim or piece of substantive content, decide: route or skip.
 
 ### Worth writing
 - Facts about tracked entities — state changes, attribute updates, biographical details.
@@ -175,25 +194,37 @@ For each claim, decide: route or skip.
 - Self-disclosure / belief revision.
 - New entities worth tracking.
 - Significant events.
+- **Frameworks, theories, models, mental models** the user articulates about a project, concept, person, or domain. These are often the densest material in a conversation — never skip them.
+- **Extended reasoning** the user develops over multiple turns — the "why behind" their thinking, the steps they walk through, the chain of logic.
+- **Explanatory content** about how something works, why something matters, what they're trying to do. If the user spends more than two turns developing an idea, that idea is almost always worth capturing in full.
+- **Distinctions and angles** — when the user differentiates their approach ("less about X and more about Y"), the contrast itself is content.
+- **Premises and assumptions** the user names as foundational to their thinking on a topic.
 
 ### Worth skipping
 - Social pleasantries.
-- Conversational scaffolding ("let me think", "okay so").
+- Conversational scaffolding ("let me think", "okay so", "hear me out").
 - Filler / disfluencies.
+- Test or meta utterances ("I'm just testing the call", "ignore this").
+- Meta-instructions to Audri ("be a thought partner for me" — this is a directive to the assistant, not a fact about the user).
 - **Restated facts already in candidate pages** — drop silently. Do NOT add a Timeline entry like "**Current** — (still true)" to mark recency.
-- Vague mentions (too unspecific to inform anything).
-- Generic aspirations without specificity.
+- Vague mentions with no associated content ("Sarah said something about work").
+- Generic aspirations without specificity ("I should exercise more").
 - Speculation, hypotheticals, unclear-subject claims.
 
 ### Per-type bar adjustments
 - **profile** pages: HIGHER bar. Speculative attitudes go to note or get skipped.
 - **todo** pages: LOWER bar. Capture commitments aggressively.
 - **note** pages: LOWER bar.
+- **project / concept** pages: LOWER bar for substantive content. If the user is articulating a project's premise, framework, or reasoning, capture richly even if some content feels in-flight.
 - All other types: default bar.
 
-### When in doubt, SKIP. Wiki suffers more from noise than from missed claims.
+### Default toward CAPTURE, not skip
 
-Test: would a thoughtful reader of the wiki six months from now gain anything? If no clear yes, skip.
+The wiki's value compounds with content. Sparse, headline-only pages don't help the user's future self think — pages with the user's actual reasoning preserved do.
+
+When unsure: CAPTURE. Phrase it as best you can and put it on the most relevant candidate page. Pro's premature-create-guard handles overflow on entity creation; the noteworthiness filter exists for the obvious cases (pleasantries, restated facts, meta-instructions) — not for "this feels half-formed."
+
+Test: would a thoughtful reader of the wiki six months from now find this useful in understanding what the user thinks / wants / is working on? If yes (even partially), capture it.
 
 Skipped claims appear in output's \`skipped\` array with brief \`reason\`.
 
@@ -270,7 +301,21 @@ Try to infer specific dates from the transcript (absolute dates, relative expres
 
 Skipped claims → output's \`skipped\` array with brief reason.
 
-## 6. Source attribution
+## 6. Section content depth
+
+Section content is markdown prose. Write **rich** sections — preserve the substance, structure, and detail of what the user said. Sparse one-liner sections waste the user's effort.
+
+Guidelines:
+- A typical substantive section is 2-6 sentences (or a structured bullet list if the user laid out a list).
+- Mirror the user's own structure: if they walked through 5 things in order, list 5 things in order. If they made a contrast ("less about X, more about Y"), the section preserves the contrast.
+- Use the user's own framing and word choices where they're distinctive ("the limiting resource", "the bottleneck of all bottlenecks").
+- Don't compress out the texture. "I think consensus is the most precious resource humanity needs to overcome the obstacles facing us in the coming decades" is much richer than "Believes consensus is important."
+- Section titles should be specific. Prefer "Premise: information acceleration as historical pattern" over "Premise". Prefer "Why consensus matters" over "Goals".
+- Multiple sections per page is normal for project / concept pages capturing rich material. If the user articulated a framework + a goal + a method + a distinction, that's potentially 4 sections.
+
+If the user developed a framework over multiple turns, write a section that captures the framework end-to-end (chain, conclusion, angle), not 7 atomic claims about its components.
+
+## 7. Source attribution
 
 Every \`create\` section AND every \`update\` section that carries a content change MUST include a \`snippets\` array with one or more { turn_id, text } entries tying the write to a transcript passage. Sections kept-as-is (referenced only by id, no content change) do NOT require snippets.
 
