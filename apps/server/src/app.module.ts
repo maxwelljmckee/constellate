@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { HealthModule } from './health/health.module.js';
+import { MeModule } from './me/me.module.js';
+import { SeedModule } from './seed/seed.module.js';
+import { WebhooksModule } from './webhooks/webhooks.module.js';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import { HealthModule } from './health/health.module.js';
       },
     }),
     HealthModule,
+    SeedModule,
+    WebhooksModule,
+    MeModule,
   ],
 })
 export class AppModule {}

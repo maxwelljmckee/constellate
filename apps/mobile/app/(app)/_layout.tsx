@@ -1,7 +1,9 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
+import { useSession } from '../../lib/useSession';
 
-// Main app stack — home, call, plugin overlays land here.
-// Auth gate (redirect to (auth) if unauthed) added in slice 1.
+// Main app stack — bounces signed-out users to sign-in.
 export default function AppLayout() {
+  const session = useSession();
+  if (session.status === 'signed-out') return <Redirect href="/(auth)/sign-in" />;
   return <Stack screenOptions={{ headerShown: false }} />;
 }

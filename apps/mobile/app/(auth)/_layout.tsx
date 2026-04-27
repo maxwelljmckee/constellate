@@ -1,7 +1,9 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
+import { useSession } from '../../lib/useSession';
 
-// Auth flow stack — sign-in, sign-up land here.
-// Auth-aware redirect logic added in slice 1 (`useAuth` + Redirect components).
+// Auth flow stack — bounces signed-in users out to (app).
 export default function AuthLayout() {
+  const session = useSession();
+  if (session.status === 'signed-in') return <Redirect href="/(app)" />;
   return <Stack screenOptions={{ headerShown: false }} />;
 }
