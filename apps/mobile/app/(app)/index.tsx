@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PluginTile } from '../../components/PluginTile';
+import { useCallStore } from '../../lib/useCallStore';
 import { firstNameFromUser, timeAwareGreeting } from '../../lib/greeting';
 import { supabase } from '../../lib/supabase';
 import { useMe } from '../../lib/useMe';
@@ -16,8 +18,15 @@ export default function HomeScreen() {
   const greeting = timeAwareGreeting();
   const firstName = firstNameFromUser(sessionUser);
 
+  const startCall = useCallStore((s) => s.startCall);
+
   async function signOut() {
     await supabase.auth.signOut();
+  }
+
+  function openCall() {
+    startCall();
+    router.push('/call');
   }
 
   return (
@@ -58,7 +67,10 @@ export default function HomeScreen() {
         </View>
 
         <View className="items-center pb-4">
-          <Pressable className="h-16 w-16 items-center justify-center rounded-full bg-azure-accent active:opacity-80">
+          <Pressable
+            onPress={openCall}
+            className="h-16 w-16 items-center justify-center rounded-full bg-azure-accent active:opacity-80"
+          >
             <Ionicons name="call-outline" size={28} color="#fff" />
           </Pressable>
         </View>

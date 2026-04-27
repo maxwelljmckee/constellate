@@ -69,40 +69,40 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 ---
 
-## Slice 1 — Auth → Home reachable
+## Slice 1 — Auth → Home reachable (✅ done 2026-04-27)
 
 **Goal:** complete signup flow lands the user on a home screen with their seeded data visible.
 
-- ⏺️ Mobile: **Google sign-in via Supabase Auth** (`@supabase/supabase-js` + Google OAuth flow). Apple sign-in deferred until Apple Developer enrollment unblocks (see `judgement-calls.md` 2026-04-26). Apple sign-in is P0 in `backlog.md` → re-incorporate before TestFlight push.
-- ⏺️ Server: signup webhook from Supabase Auth → seed transaction (1 `agents` row + 20 `wiki_pages` rows + 1 `user_settings` row, atomic, idempotent)
-- ⏺️ Mobile: routing gate — `(auth)` redirect away if authed; `(app)` redirect to `(auth)` if unauthed
-- ⏺️ Mobile: Home screen shell — wordmark, greeting (time-aware), avatar stub, plugin grid placeholder (4 tiles: Wiki / Todos / Research / Profile), phone-icon button at bottom. Tiles do nothing yet; phone button does nothing yet.
-- ⏺️ Server: minimal `GET /me` endpoint returning `{ user_id, agents[], user_settings }` for client bootstrap (RxDB comes in Slice 5; this is REST for now)
-- ⏺️ Mobile: full-screen edge-to-edge background; safe-area insets respected for layout
+- ✅ Mobile: **Google sign-in via Supabase Auth** (PKCE flow, `signInWithOAuth` + `WebBrowser.openAuthSessionAsync` + `exchangeCodeForSession`). Apple sign-in deferred — P0 in `backlog.md`.
+- ✅ Server: Supabase **Database Webhook** on `auth.users` INSERT → `POST /webhooks/supabase-signup` (auth via `Authorization` header secret) → SeedService transaction → 1 agent + 20 wiki_pages (5 agent + 10 profile + 5 todo) + 1 user_settings. Idempotent on user_id. Deferrable circular FK between `agents.root_page_id` ↔ `wiki_pages(agent root).agent_id` worked as designed.
+- ✅ Mobile: `useSession` hook + reactive route gates in `(auth)/_layout` and `(app)/_layout`.
+- ✅ Mobile: Home screen shell — wordmark, time-aware greeting + first name from Supabase Auth `user_metadata.given_name`, sign-out tile (avatar stub), 2x2 plugin grid placeholder, phone FAB. SafeAreaProvider + edge-to-edge bg.
+- ✅ Server: `GET /me` (auth-guarded by `SupabaseAuthGuard`, returns `{ user, agents (sanitized — no persona_prompt per Invariant 3), userSettings }`).
 
-**Demo:** sign in with Google → server seeds wiki → mobile lands on home → home renders with personal greeting. No call yet, no plugin contents yet. (Apple sign-in path added back when Apple Developer unblocks.)
+**Demo (validated live):** sign in with Google → user row created in `auth.users` → webhook fires → seed runs → mobile lands on home with "Good morning, Max." + "1 agent · 1 plugin".
 
-**Estimated:** 4–6 days.
+**Estimated:** 4–6 days. **Actual:** ~4 hours of code + ~2 hours of OAuth-config debugging.
+
+**Punted from this slice (logged elsewhere):**
+- iOS `ASWebAuthenticationSession` system dialog ("Audri wants to use ...supabase.co to Sign In") — UX-confusing but unavoidable without paid Supabase Pro custom auth domain or native Google Sign-In SDK. Tracked in `backlog.md` Security section.
+- Apple sign-in (Apple Developer enrollment blocked).
 
 ---
 
-## Slice 2 — Call screen skeleton (stubbed Gemini)
+## Slice 2 — Call screen skeleton (stubbed Gemini) (✅ done 2026-04-27)
 
 **Goal:** the call experience VISUALLY works end-to-end. Audio is fake.
 
-- ⏺️ Mobile: `(app)/call.tsx` — orb animation, hang-up button, "Connecting..." state
-- ⏺️ Mobile: home phone-icon button → routes to call; on call end, returns to home
-- ⏺️ Mobile: Reanimated-based orb component
-  - Idle breathing animation
-  - Audio-level-driven scale + glow (reads from a Zustand store; we feed fake amplitude values that fluctuate)
-  - Speaker-color cross-fade (cycles fake user/agent every few seconds)
-- ⏺️ Mobile: `<CallEndedDropped>` component (dropped state UI; not wired to real network yet, accessible via debug toggle)
-- ⏺️ Mobile: Zustand `useCallStore` at app root; call screen mounts against it
-- ⏺️ Mobile: hang-up triggers a fake "ending..." state then returns home
+- ✅ Mobile: `(app)/call.tsx` — orb + M:SS elapsed timer + hang-up + Connecting state
+- ✅ Mobile: home phone FAB → routes to /call → returns home on hang-up
+- ✅ Mobile: simplified orb component (single circle, Reanimated `interpolateColor` cross-fade between blue/indigo on speaker change). Initial design (breathing + glow + amplitude scale) was visually rough; reverted to sandbox-style single-circle. Re-attach amplitude reaction in slice 3 if needed.
+- ✅ Mobile: `<CallEndedDropped>` component reachable via 4-tap debug toggle on the orb
+- ✅ Mobile: Zustand `useCallStore` at module scope (status, currentSpeaker, amplitude, transition actions)
+- ✅ Mobile: hang-up triggers ending → reset → router.back
 
-**Demo:** tap phone on home → call screen mounts → orb breathes + responds to fake audio levels + cycles speaker color → tap hang-up → return home.
+**Demo (validated live):** tap phone on home → call screen mounts → "Connecting…" → M:SS timer + orb cross-fades on fake speaker cycle → hang-up returns home.
 
-**Estimated:** 3–4 days. The orb animation alone may eat a chunk of this.
+**Estimated:** 3–4 days. **Actual:** ~1 hour code + ~30min orb iteration.
 
 ---
 

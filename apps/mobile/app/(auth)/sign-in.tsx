@@ -14,7 +14,10 @@ export default function SignInScreen() {
     setErr(null);
     setBusy(true);
     try {
-      const redirectTo = Linking.createURL('/auth-callback');
+      // No leading slash → produces `audri://auth-callback` (two slashes), which
+      // matches typical Supabase redirect-URL allowlist patterns. A leading slash
+      // would produce `audri:///auth-callback` and fail the allowlist check.
+      const redirectTo = Linking.createURL('auth-callback');
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -29,16 +32,29 @@ export default function SignInScreen() {
         throw new Error(`auth flow ended: ${result.type}`);
       }
 
+      // supabase-js defaults to PKCE flow in v2+: callback returns ?code=... in the
+      // query string, which we exchange for a session server-side via Supabase.
+      // (Implicit-flow legacy: tokens in the URL fragment after #. Handle both.)
       const params = parseAuthUrl(result.url);
-      if (!params.access_token || !params.refresh_token) {
-        throw new Error('callback url missing tokens');
+
+      if (params.error || params.error_code) {
+        // Supabase relayed an error in the callback — surface the actual reason.
+        const desc = params.error_description ?? params.error ?? params.error_code ?? 'unknown';
+        throw new Error(`Supabase auth error: ${desc}`);
       }
 
-      const { error: setErr } = await supabase.auth.setSession({
-        access_token: params.access_token,
-        refresh_token: params.refresh_token,
-      });
-      if (setErr) throw setErr;
+      if (params.code) {
+        const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(params.code);
+        if (exchangeErr) throw exchangeErr;
+      } else if (params.access_token && params.refresh_token) {
+        const { error: setErr } = await supabase.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token,
+        });
+        if (setErr) throw setErr;
+      } else {
+        throw new Error(`callback url missing code/tokens: ${result.url.slice(0, 120)}`);
+      }
       // onAuthStateChange in (auth)/_layout will redirect to (app).
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -69,12 +85,18 @@ export default function SignInScreen() {
 }
 
 function parseAuthUrl(url: string): Record<string, string> {
-  // Supabase returns tokens in the URL fragment: audri://auth-callback#access_token=...&refresh_token=...&...
-  const fragment = url.split('#')[1] ?? url.split('?')[1] ?? '';
-  return Object.fromEntries(
-    fragment.split('&').map((kv) => {
+  // PKCE flow: ?code=... in query string. Implicit flow: #...tokens in fragment.
+  // Merge both since the callback may use either depending on Supabase config.
+  const out: Record<string, string> = {};
+  const [, queryAndFrag = ''] = url.split('?');
+  const [query = '', fragment = ''] = queryAndFrag.split('#');
+  const hashOnly = url.includes('#') && !url.includes('?') ? url.split('#')[1] ?? '' : '';
+  for (const part of [query, fragment, hashOnly]) {
+    if (!part) continue;
+    for (const kv of part.split('&')) {
       const [k, v] = kv.split('=');
-      return [k ?? '', decodeURIComponent(v ?? '')];
-    }),
-  );
+      if (k) out[k] = decodeURIComponent(v ?? '');
+    }
+  }
+  return out;
 }
