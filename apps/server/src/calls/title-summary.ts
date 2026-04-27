@@ -20,12 +20,27 @@ function buildPrompt(userFirstName: string | null): string {
 
   return `You will receive a turn-tagged transcript of a voice conversation between a person and "Audri", their personal assistant. Produce a concise title and one-paragraph summary.
 
+Output ONLY a JSON object matching this shape — no preamble, no explanation, no markdown code fences:
+{"title": "...", "summary": "..."}
+
 Rules:
 - Title: 4-8 words, no quotes, no trailing punctuation. Capture the gist of the conversation.
 - Summary: 1-3 sentences, past tense.
 - ${personRule}
 - Skip greetings, pleasantries, and meta-conversation.
 - If the transcript is too short or content-free, return both fields as empty strings.`;
+}
+
+// Lenient JSON extractor — Gemini Flash sometimes wraps JSON in conversational
+// prose ("Here is the JSON: { ... }") despite responseMimeType constraints.
+// Find the first '{' and matching last '}', parse just that.
+function extractJson(text: string): unknown {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error('no JSON object in response');
+  }
+  return JSON.parse(text.slice(start, end + 1));
 }
 
 export interface TitleSummaryResult {
@@ -66,7 +81,7 @@ export async function generateTitleSummary(
     const text = resp.text;
     if (!text) return null;
 
-    const parsed = JSON.parse(text) as TitleSummaryResult;
+    const parsed = extractJson(text) as Partial<TitleSummaryResult>;
     const title = (parsed.title ?? '').trim();
     const summary = (parsed.summary ?? '').trim();
     if (!title && !summary) return null;
