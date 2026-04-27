@@ -43,6 +43,37 @@ function extractJson(text: string): unknown {
   return JSON.parse(text.slice(start, end + 1));
 }
 
+function isTransientGeminiError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : typeof err === 'string' ? err : JSON.stringify(err);
+  return (
+    msg.includes('503') ||
+    msg.includes('429') ||
+    msg.includes('UNAVAILABLE') ||
+    msg.includes('RESOURCE_EXHAUSTED') ||
+    msg.includes('DEADLINE_EXCEEDED') ||
+    msg.includes('ECONNRESET') ||
+    msg.includes('ETIMEDOUT')
+  );
+}
+
+// 3 attempts with exponential backoff for transient errors only. Total max
+// wait ~2.5s before giving up — well within fire-and-forget budget.
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  const attempts = 3;
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i === attempts - 1) throw err;
+      if (!isTransientGeminiError(err)) throw err;
+      await new Promise((r) => setTimeout(r, 500 * 2 ** i));
+    }
+  }
+  throw lastErr;
+}
+
 export interface TitleSummaryResult {
   title: string;
   summary: string;
@@ -60,23 +91,27 @@ export async function generateTitleSummary(
     .join('\n');
 
   try {
-    const resp = await getGeminiClient().models.generateContent({
-      model: FLASH_MODEL,
-      contents: [{ role: 'user', parts: [{ text: `${buildPrompt(userFirstName)}\n\n---\n${flat}` }] }],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            summary: { type: Type.STRING },
+    const resp = await withRetry(() =>
+      getGeminiClient().models.generateContent({
+        model: FLASH_MODEL,
+        contents: [
+          { role: 'user', parts: [{ text: `${buildPrompt(userFirstName)}\n\n---\n${flat}` }] },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              summary: { type: Type.STRING },
+            },
+            required: ['title', 'summary'],
           },
-          required: ['title', 'summary'],
+          temperature: 0.4,
+          maxOutputTokens: 300,
         },
-        temperature: 0.4,
-        maxOutputTokens: 300,
-      },
-    });
+      }),
+    );
 
     const text = resp.text;
     if (!text) return null;
