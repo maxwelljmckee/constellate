@@ -10,27 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { db, callTranscripts, eq, sql, userSettings } from '@audri/shared/db';
-import { getSupabaseAdmin } from '../auth/supabase.client.js';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard.js';
 import { CurrentUser } from '../auth/user.decorator.js';
 import { CallsService } from './calls.service.js';
 import type { TranscriptTurn } from './transcript.types.js';
-
-// Pull a first name from Supabase Auth user_metadata (Google OAuth populates
-// given_name / full_name / name). Returns null if nothing usable found.
-async function fetchUserFirstName(userId: string): Promise<string | null> {
-  try {
-    const { data } = await getSupabaseAdmin().auth.admin.getUserById(userId);
-    const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
-    const given = typeof meta.given_name === 'string' ? meta.given_name : null;
-    if (given) return given;
-    const full = typeof meta.full_name === 'string' ? meta.full_name : typeof meta.name === 'string' ? meta.name : null;
-    if (full) return full.split(' ')[0] ?? null;
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 interface StartCallBody {
   agent_slug?: string;
@@ -129,18 +112,6 @@ export class CallsController {
             ${ingestionPayload}::json,
             queue_name => ${`ingestion-${user.id}`},
             max_attempts => 2
-          )
-        `);
-
-        // Title + summary job: lighter, no per-user serialization (independent
-        // of ingestion; cosmetic field). Same retry semantics.
-        const firstName = await fetchUserFirstName(user.id);
-        const titlePayload = JSON.stringify({ sessionId, userFirstName: firstName });
-        await tx.execute(sql`
-          SELECT graphile_worker.add_job(
-            'generate_title_summary',
-            ${titlePayload}::json,
-            max_attempts => 3
           )
         `);
       }

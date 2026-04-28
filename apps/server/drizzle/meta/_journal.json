@@ -22,6 +22,13 @@
       "when": 1777321499795,
       "tag": "0002_daffy_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777400000000,
+      "tag": "0003_realtime_publication",
+      "breakpoints": true
     }
   ]
 }

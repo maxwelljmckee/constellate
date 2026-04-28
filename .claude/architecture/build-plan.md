@@ -147,39 +147,36 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 ---
 
-## Slice 5 — RxDB sync + Wiki plugin surface
+## Slice 5 — RxDB sync + Wiki plugin surface (✅ done 2026-04-27)
 
 **Goal:** mobile reactively reflects server-side wiki changes. First "real" plugin overlay UX.
 
-- ⏺️ Mobile: RxDB setup with Supabase replication plugin; collections defined for MVP-relevant tables (`wiki_pages`, `wiki_sections`, `agents` (sanitized — no `persona_prompt`), `agent_tasks`, `research_outputs`, `tags`, `wiki_page_tags`, `user_settings`, `call_transcripts`, `wiki_log`).
-- ⏺️ Mobile: RxDB hydration — paginated by `updated_at DESC`; recently-touched first
-- ⏺️ Mobile: `<PluginOverlay>` + `usePluginOverlay()` cleanly rebuilt (origin-aware spring; not the sandbox version)
-- ⏺️ Mobile: Wiki plugin tile → overlay screen browsing user's wiki pages from RxDB
-  - Virtual folders by `type`
-  - Tap a page → page detail with sections rendered as markdown
-  - Edit (basic markdown editor — TipTap or similar choice locked at code time)
-- ⏺️ Mobile: realtime updates from server fan-out flow into the UI live (have a call → wiki updates appear in the open Wiki overlay without refresh)
+- ✅ Mobile: RxDB setup with Supabase replication plugin (in-memory storage MVP; collections for `wiki_pages` + `wiki_sections`). `_deleted` GENERATED column derived from `tombstoned_at` so rxdb-supabase has its required tombstone signal.
+- ✅ Mobile: RxDB hydration via paginated pull on `updated_at`.
+- ✅ Mobile: `<PluginOverlay>` + `usePluginOverlay()` rebuilt — origin-aware scale-from-tile animation (captures tile rect via `measureInWindow`, animates left/top/width/height/borderRadius). Sheet unmounts after close-animation completes so it doesn't sit over the tile when collapsed; opacity fade on the leading + trailing edges of the animation.
+- ✅ Mobile: 4-column tile layout with label below tile (replaced 2x2 in-tile-label grid).
+- ✅ Mobile: Wiki overlay → folder list (virtual folders by `type`) → page list → page detail with markdown rendering + raw-markdown section editor.
+- ✅ Mobile: realtime sync working — required hand-edited migration to enroll `wiki_pages` + `wiki_sections` in `supabase_realtime` publication and set `REPLICA IDENTITY FULL` (Slice 6 follow-up; rxdb-supabase subscribes successfully but receives no events without publication membership).
+- ✅ Mobile: `startReplication()` memoizes its in-flight promise so concurrent mounts (StrictMode, multiple consumers) don't construct duplicate replications against the same realtime channel.
 
-**Demo:** finish a call → tap Wiki tile on home → see the new pages from the call. Edit one in mobile → it persists to Postgres.
-
-**Estimated:** 5–7 days. RxDB + RLS + Supabase replication is the wildcard.
+**Estimated:** 5–7 days. **Actual:** ~1 day code + ~2 hrs of RxDB schema gotchas (maxLength on indexed string fields, _deleted column) + ~1 hr Supabase realtime publication.
 
 ---
 
-## Slice 6 — Onboarding end-to-end
+## Slice 6 — Onboarding end-to-end (✅ done 2026-04-27)
 
 **Goal:** new user signup flows naturally through onboarding into a populated profile.
 
-- ⏺️ Mobile: `(app)/onboarding.tsx` screen — minimal "Tap to start" launcher
-- ⏺️ Server: `POST /calls/start` accepts `call_type='onboarding'` → composes onboarding scaffolding (separate prompt cache); minimal preload (profile stubs); no recent-activity layer
-- ⏺️ Server: full onboarding system prompt drafted against `specs/onboarding.md` decision rules — opener question, askable/emergent split, capability advertisement discipline, "good enough" heuristic baked in.
-- ⏺️ Mobile: post-Slice-1 routing — first-time user lands on Onboarding screen instead of Home (one-shot redirect after signup completes; subsequent loads go to Home regardless of `onboarding_complete`)
-- ⏺️ Server: end-of-call handler — when `call_type='onboarding'` AND user signaled completion, set `user_settings.onboarding_complete=true`. Subsequent generic calls check the flag at session start; if false, scaffolding nudges "want to pick up?"
-- ⏺️ Mobile: post-onboarding redirect to Home with profile-content visible (via RxDB realtime updates from Slice 5)
+- ✅ Mobile: `(app)/onboarding.tsx` screen — pre-state with welcome copy + "Tap to begin" + "Skip for now"; live state reuses orb + hangup, then `router.replace('/(app)')` on end.
+- ✅ Server: `composeSystemPrompt` branches by `call_type`. Onboarding scaffolding implements `specs/onboarding.md` — self-intro template, life-history-first opener (with interests-pivot if life-history is a dead-end), askable/emergent topic split, capability-advertisement discipline tied to stated needs, ~10-min "good-enough" wrap heuristic, "breadth over depth without disrupting flow" guidance.
+- ✅ Server: `/calls/:id/end` flips `user_settings.onboarding_complete=true` atomically with the transcript update for non-cancelled onboarding calls.
+- ✅ Mobile: home screen redirects first-time users (`onboardingComplete=false` from `/me`) to `/onboarding`. Subsequent loads land on home as normal.
+- ✅ Mobile: `useCall.start({ callType })` plumbs the type through to `/calls/start`; kickoff cue distinguishes onboarding vs generic.
+- ✅ Seed: agent name flipped from `'Assistant'` to `'Audri'` (slug stays `'assistant'`) so the model self-identifies correctly.
+- ✅ Worker: Pro fan-out wrapped with single transient-error retry (undici headers timeout, fetch failures) so one slow Pro response doesn't kill the user-scope ingestion pass.
+- ✅ Generic-call context preload — `loadGenericCallContext()` reads profile/* + agent-scope notes (`assistant/observations|recurring-themes|preferences-noted|open-questions`) + last 5 ended call titles+summaries + 8 most-recently-updated wiki pages, rendered as a "What you know about the user" markdown block injected into the system prompt for `call_type='generic'` only. Per-section character caps prevent verbose profiles from blowing context. Onboarding stays cold (no preload — user hasn't given the model anything yet).
 
-**Demo:** new user signs up → lands on onboarding → completes ~10-min interview → profile pages populate live → lands on home.
-
-**Estimated:** 4–6 days. Most of the work is prompt-tuning + the user-experience polish.
+**Estimated:** 4–6 days. **Actual:** ~2 hours code + ~1 hour prompt iteration. Onboarding flow felt right after 2-3 prompt revisions; the most subtle one was rewriting the "breadth over depth" rule after it caused the model to cut users off mid-thought.
 
 ---
 

@@ -7,6 +7,10 @@ interface ComposeArgs {
   personaPrompt: string;
   userPromptNotes: string | null;
   callType: "generic" | "onboarding";
+  // Rendered preload block (profile + agent notes + recent calls + recent
+  // pages). Only set for generic calls; onboarding intentionally starts cold
+  // since the user hasn't given the model anything yet.
+  preloadBlock?: string;
 }
 
 export function composeSystemPrompt(args: ComposeArgs): string {
@@ -20,6 +24,7 @@ export function composeSystemPrompt(args: ComposeArgs): string {
     "",
     args.personaPrompt,
     args.userPromptNotes ? `\nUser preferences:\n${args.userPromptNotes}` : "",
+    args.preloadBlock ? `\n${args.preloadBlock}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -61,16 +66,16 @@ Avoid the generic "why are you here" framing entirely — it produces shallow an
 
 Structured-but-conversational. Topics are scoped; order, depth, and style adapt to the user. Follow their lead. Pick transitions based on what they share. Ask follow-ups when answers are vague. Move on when an answer is substantive enough OR when the user seems done with that topic.
 
-# Breadth over depth
+# Breadth over depth (without disrupting flow)
 
-This interview is a SURVEY of the user across many dimensions, not a deep dive into any one. Get a broad-strokes picture of their life, interests, and needs — leave the depth for future calls.
+This interview is a SURVEY across many dimensions of the user's life, not a deep dive into any one. Aim for breadth — but never at the cost of cutting the user off mid-thought.
 
-Concrete discipline:
-- **One follow-up max per topic, and only when the answer was actually too vague to be useful.** "I work in tech" → one follow-up ("doing what, and where?"). "I'm a senior backend engineer at Stripe working on payments infra" → no follow-up; move on.
-- **No drilling.** Don't ask "tell me more about that," "what does that look like day-to-day," "how do you feel about it" — those are depth questions, save them for later calls.
-- **When in doubt, transition.** Better to leave a topic with a thin signal and come back to it organically over future calls than to extract every detail now.
-- **Watch the topic counter.** You're aiming for 4+ askable areas covered substantively in ~10 minutes. That math forces breadth — you can't spend 5 minutes on goals and still cover work, interests, relationships, and preferences.
-- **Future-call language is fine.** "Good to know — we can dig into that more another time. For now, let me ask about…"
+The shape:
+- **Don't proactively drill.** When the user finishes a thought, you don't need to follow up with "tell me more about that," "what does that look like day-to-day," or "how do you feel about it." Those questions belong in future calls.
+- **Use follow-ups to move the conversation forward, not to dwell.** A good follow-up takes what the user said and uses it as a natural bridge to the next thing — "you mentioned you grew up in Denver, are you still out there now?" — rather than trying to extract every detail of what they just shared.
+- **Wait for natural inflection points to change subjects.** When the user is mid-story, mid-thought, or mid-explanation, let them finish. Inflection points are clear pauses, completed thoughts, "anyway"-type wrap-ups, or moments when they explicitly hand the floor back ("…so yeah, that's where I'm at").
+- **Never arbitrarily change the subject.** If you do transition, anchor it in something they just said. "You mentioned X — that makes me curious about Y."
+- **Trust the math.** ~10 minutes across 4+ askable areas means each topic naturally gets a few minutes, not a full deep dive. The pacing follows from honoring inflection points; you don't need to enforce it artificially.
 
 # Topics — askable vs. emergent
 

@@ -3,6 +3,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EndSensitivity, Modality, StartSensitivity } from '@google/genai';
 import { db, agents, callTranscripts, and, eq } from '@audri/shared/db';
 import { LIVE_MODEL, getGeminiClient } from '@audri/shared/gemini';
+import { loadGenericCallContext, renderPreloadBlock } from './preload.js';
 import { composeSystemPrompt } from './system-prompt.js';
 
 export interface StartCallArgs {
@@ -33,11 +34,19 @@ export class CallsService {
     if (!agent) throw new NotFoundException(`agent not found: ${agentSlug}`);
 
     const sessionId = randomUUID();
+    // Generic calls preload profile + agent notes + recent activity. Onboarding
+    // intentionally starts cold — the user hasn't given the model anything yet.
+    const preloadBlock =
+      callType === 'generic'
+        ? renderPreloadBlock(await loadGenericCallContext(userId))
+        : '';
+
     const systemInstruction = composeSystemPrompt({
       agentName: agent.name,
       personaPrompt: agent.personaPrompt,
       userPromptNotes: agent.userPromptNotes,
       callType,
+      preloadBlock,
     });
 
     const expireAt = new Date(Date.now() + 30 * 60 * 1000); // 30min
