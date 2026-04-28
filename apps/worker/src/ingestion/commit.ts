@@ -35,6 +35,14 @@ export interface CommitInput {
   candidatePages: CandidatePage[];
 }
 
+function truncateForTitle(s: string, max = 60): string {
+  const trimmed = s.trim();
+  if (trimmed.length <= max) return trimmed;
+  const slice = trimmed.slice(0, max);
+  const lastSpace = slice.lastIndexOf(' ');
+  return `${(lastSpace > 30 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`;
+}
+
 export interface CommitResult {
   pagesCreated: number;
   pagesUpdated: number;
@@ -336,6 +344,9 @@ export async function commitFanOut(input: CommitInput): Promise<CommitResult> {
       } else {
         for (const task of fanOut.tasks) {
           if (task.kind !== 'research') continue;
+          // Placeholder title; the research handler's commit overwrites this
+          // with the LLM-generated abbreviated title once the task completes.
+          const placeholderTitle = `Research: ${truncateForTitle(task.query)}`;
           const [todoRow] = await tx
             .insert(wikiPages)
             .values({
@@ -346,7 +357,7 @@ export async function commitFanOut(input: CommitInput): Promise<CommitResult> {
               // ingestion produces several research tasks in the same call.
               slug: `todos/research-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
               parentPageId: todoBucket.id,
-              title: `Research: ${task.query.slice(0, 100)}`,
+              title: placeholderTitle,
               agentAbstract: `Research request: ${task.query}`,
             })
             .returning({ id: wikiPages.id });

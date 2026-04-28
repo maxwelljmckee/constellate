@@ -50,6 +50,13 @@
       "when": 1777500002000,
       "tag": "0006_fix_todo_bucket_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777583000000,
+      "tag": "0007_research_title",
+      "breakpoints": true
     }
   ]
 }

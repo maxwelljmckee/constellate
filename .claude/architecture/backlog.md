@@ -48,6 +48,7 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | Calendar-event plugin | P1 | M | Feature | Requires Google Calendar connector. User-confirm-required at MVP scope. Source: §11, §15, §15c. |
 | Daily/weekly brief plugin | P1 | M | Feature | Aggregates recent activity + wiki state. Source: §11, §15c. |
 | Periodic usage + interest review | P2 | M | Feature | Scheduled background pass surfacing "you've been talking about X lately — want a weekly brief on it?" style recommendations. Own prompt + kind. Source: §13. |
+| **Artifact → first-class entity routing** (link / convert / reingest) | **P0** | **L** | **Feature + Infra** | From an artifact detail view, the user can route the artifact to other first-class entities. Concrete operations from a research output: (a) **reingest as a Source** — flip `reingestsIntoWiki=true` for this artifact; ingestion fan-out treats it as a new transcript-like input + writes wiki sections cited back to it. (b) **Attach to a wiki page** — explicit junction (e.g. `wiki_page_research_attachments` or polymorphic `wiki_page_attachments`) so the page's detail view shows the research as a reference. (c) **Convert to another artifact kind** — research → podcast script (kicks off podcast plugin with the research as input); research → email draft (kicks off email plugin pre-filled). **Direction of relation matters:** todos→research is the existing direction (a todo can spawn a research task); research→todo doesn't make sense as a forward link. Generally: artifacts are downstream-of todos, upstream-of follow-on artifacts. Worth designing the polymorphic attachment table once + applying to all artifact kinds rather than per-kind tables. Source: post-slice-7 review. |
 
 ### Custom agents
 
@@ -96,7 +97,7 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 
 | Name | Priority | Effort | Type | Description |
 |---|---|---|---|---|
-| Contextual-call initialization from a wiki page / artifact | P1 | M | Feature | Start a call primed on the page the user is viewing. Source: §8. |
+| Contextual-call initialization from a wiki page / artifact | P1 | M | Feature | Start a call primed on the page the user is viewing. The viewed entity gets **priority preload** — same general-call preload as today, plus the focused entity injected with extra emphasis ("the user just opened this — they're likely calling about it"). Concrete trigger surfaces: wiki page detail, research output detail, todo detail, project detail. **Possible obsoletion:** if Interactive Call Surface lands first, this becomes redundant — the live agent would have UX-context-awareness via tools rather than a preload special-case. Track both paths; whichever lands first wins. Source: §8 + post-slice-7 review. |
 | Call-type variants (task-specific calls) | P2 | L | Feature | Generic / contextual / "daily brief" / "brainstorm on X" call types with their own preload + prompt + call-end flow. Source: §8. |
 | Mid-call tool set beyond `search_graph` | P2 | M | Feature | Web search, URL fetch, calendar peek. Source: §8. |
 | Call resumption after network drop | P2 | L | Feature | Resume or start fresh on reconnect. Source: §8. |
@@ -150,6 +151,8 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | Name | Priority | Effort | Type | Description |
 |---|---|---|---|---|
 | Recent-activity materialized view or cache table | P2 | M | Infra + Data model | MVP computes recent activity (last N calls + wiki updates + completed artifacts + todos) via fresh query against `wiki_log` + `call_transcripts` + `agent_tasks` on each call start. When call-start latency becomes noticeable or the activity-stream UI (V1+) shares the same data, promote to a materialized view or dedicated cache table refreshed on event writes. Source: §8 Chunk 1. |
+| **Recent artifacts in generic-call preload** | **P0** | **S** | **Feature + Infra** | Extend `loadGenericCallContext` to fetch the user's most recent N artifacts (research today; podcasts/email-drafts/calendar-events/briefs as those plugins land). Inject a thin "Recent artifacts" section into the preload block — title + kind + 1-line summary + timestamp + id. NOT full body — just enough that the agent has awareness ("I see we wrapped up that research on Italian restaurants yesterday"). Pairs with the artifact retrieval tool below for lazy full-body fetch when the agent decides it needs the depth. Source: post-slice-7 review. |
+| **Live-agent artifact retrieval tools** | **P0** | **M** | **Feature + Infra** | Gemini Live function-call tools so the agent can pull full artifact bodies on demand: `fetch_research(id)`, `fetch_podcast(id)` (V1+), `fetch_email_draft(id)` (V1+), `fetch_brief(id)` (V1+), `fetch_calendar_event(id)` (V1+). Pairs with `fetch_page` (already in the research handler's tool palette per `specs/research-task-prompt.md`) — same pattern, different artifact kinds. Pattern generalizes: each artifact kind ships with both a preload-summary contributor AND a fetch-by-id tool. Tool registration lives in the call-agent prompt's tool palette; access gated by the same plugin-availability levels as everything else. Source: post-slice-7 review. |
 
 ### Observability expansion
 
@@ -182,6 +185,12 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 ---
 
 ## Data model
+
+### First-class entity sidecars (architectural pattern)
+
+| Name | Priority | Effort | Type | Description |
+|---|---|---|---|---|
+| **Sidecar tables for first-class wiki entities** | **P0 (architectural direction)** | **L per entity** | **Data model + Infra** | **Pattern:** wiki page types that have a dedicated plugin surface UX get a 1:1 sidecar table joined on `page_id` to `wiki_pages`. Wiki page holds the universal stuff (title, agent_abstract, sections/body, parent hierarchy, links, tags). Sidecar holds typed domain columns for queries + indices. Ingestion writes both transactionally. Cross-references and search continue to flow through `wiki_pages`, so nothing is lost. **Governance rule:** only entities with their own plugin surface get sidecars — Wiki itself stays pure substrate; concepts/people/places/sources/notes stay pure wiki rows; sidecars are reserved for entities the user interacts with via a dedicated overlay (Todos, Projects, eventually Events). The "first-class" test = "does this have its own tile + overlay?" **Tradeoff:** schema duplication (two writes per entity, two reads per detail view); manageable at our scale, painful if discipline slips. Don't preempt — add a sidecar when the first feature genuinely needs a typed column. **Initial sidecars to land:** `todos` (Slice 8: due_date, priority, recurrence_rule, completed_at, ...) and `projects` (when project plugin lands: status enum, started_at, target_completion_at, milestones table or jsonb, ...). Source: post-slice-7 architectural conversation. |
 
 ### Artifact tables (V1)
 
@@ -235,6 +244,7 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 | Activity-stream UI | P1 | M | UX | Mixed-type feed with grouping + snooze. Source: §19. |
 | Notifications UI | P1 | M | UX | In-app screen + push payload shape (once push lands). Source: §19. |
 | Call-history UI | P1 | M | UX | Listing, filtering, linking back to spawned artifacts. Source: §19. |
+| Pending-artifact placeholders in plugin overlays | P0 | M | UX + Infra | All artifact UIs (Research today; Podcast / Email-draft / Brief in V1+) should show in-flight artifacts as pending entries — not invisible-until-complete. User taps the Research tile mid-generation and sees "Researching: Italian restaurants in lower Manhattan… (~2 min)" with a spinner; row hydrates to the full output when ready. Big confidence win — proves the system is working without requiring users to wait blind. Generic pattern: any plugin overlay reads BOTH the artifact collection AND a "pending tasks" view (agent_tasks where status in ('pending','running') AND kind matches), unions them with kind-specific placeholder rendering. Requires syncing agent_tasks to mobile (currently server-only — would need RLS + realtime publication migration like research_outputs got). Source: post-slice-7 UX feedback. |
 
 ### Contextual affordances
 
@@ -253,6 +263,12 @@ Each entry is sortable by **Priority**, **Effort**, and **Type**. Not a commitme
 |---|---|---|---|---|
 | Agent persona-editing UX | P1 | M | UX | Rename, voice picker, `user_prompt_notes` editor. Source: §15b. |
 | Agent-level config levers | P1 | L | UX + Infra | Per-agent overrides for prompt-influenced behavior — currently shipped as MVP defaults baked into the seed persona + scaffolding. Levers to expose: **writing voice** (3rd-person vs action-oriented; default action-oriented at MVP), **verbosity** (terse → verbose; default lightly terse with carve-out for explanatory contexts), **tone** (neutral → expressive; default mid-neutral, less "AI assistant cheery"), **voice** (Gemini voice id; column already exists, no UI), **persona prompt overrides** (`user_prompt_notes` already on schema). Stored on `agents` row; injected into composeSystemPrompt at call-start. Source: slice 6 prompt-tuning iterations. |
+
+### Plugin-as-app navigation (architectural)
+
+| Name | Priority | Effort | Type | Description |
+|---|---|---|---|---|
+| **Each plugin overlay = a true app with its own router + stack navigation** | **P0 (architectural)** | **L** | **UX + Infra** | Today's plugin overlays (Wiki, Research) are a single React view with a `view` state variable that conditional-renders different content trees ('folders' / 'type' / 'todo-bucket' / 'page'). No real navigation, no back-gesture, no slide animations. Goal: each plugin overlay hosts its own stack navigator (React Navigation) with proper push/pop semantics, slide-in/out transitions, native back gesture, header management. Drilling into a wiki bucket → real push; back swipe → pop. Tab navigation available where it fits (Todos: bucket tabs; Profile: section tabs). **Why P0:** every plugin we add (Slice 8 Todos + Profile, V1+ Podcast/Email/etc.) compounds the conditional-render debt; refactoring later is several plugins worth of churn. **Best landing window:** before Slice 8 starts (so Todos + Profile are built on the new pattern from the jump). Implementation sketch: nested `Stack.Navigator` inside `<PluginOverlay>`, each overlay registers its own root + screens, push/pop API replaces today's `setView()` state. Source: post-research-validation review (2026-04-28). |
 
 ### Mobile-app polish (spawned from `specs/mobile-app.md`)
 

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRef } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { ResearchFindingDoc, ResearchOutputDoc } from '../lib/rxdb/schemas';
@@ -8,8 +9,37 @@ interface Props {
   onBack: () => void;
 }
 
+// Hostname display: strips protocol + leading 'www.', falls back to the raw
+// URL if it doesn't parse as a valid URL.
+function hostnameFor(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 export function ResearchOutputDetail({ output, onBack }: Props) {
-  const generatedDate = new Date(output.generated_at);
+  const scrollRef = useRef<ScrollView>(null);
+  // 1-indexed citation cards keyed by citation number.
+  const citationRefs = useRef<Map<number, View>>(new Map());
+
+  // Tap [N] in a finding's source line → scroll to the matching citation
+  // card. The card itself opens the external URL when tapped (one indirection
+  // step keeps the in-document jump distinct from leaving the app).
+  const scrollToCitation = (idx1: number) => {
+    const node = citationRefs.current.get(idx1);
+    const scroll = scrollRef.current;
+    if (!node || !scroll) return;
+    node.measureLayout(
+      // @ts-expect-error react-native ScrollView measureLayout target type
+      scroll,
+      (_x, y) => {
+        scroll.scrollTo({ y: Math.max(0, y - 12), animated: true });
+      },
+      () => {},
+    );
+  };
 
   return (
     <View style={styles.flex}>
@@ -18,30 +48,44 @@ export function ResearchOutputDetail({ output, onBack }: Props) {
         <Text style={styles.backLabel}>Research</Text>
       </Pressable>
 
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.query}>{output.query}</Text>
-        <Text style={styles.timestamp}>{generatedDate.toLocaleString()}</Text>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.body}>
+        <Text style={styles.title}>{output.title || output.query}</Text>
+        <Text style={styles.queryLine}>{output.query}</Text>
+        <Text style={styles.timestamp}>
+          {new Date(output.generated_at).toLocaleString()}
+        </Text>
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Summary</Text>
           <Text style={styles.summary}>{output.summary}</Text>
         </View>
 
-        {output.findings.map((f: ResearchFindingDoc, idx) => (
-          <View key={idx} style={styles.finding}>
-            <Text style={styles.findingHeading}>{f.heading}</Text>
-            <Markdown style={markdownStyles}>{f.content}</Markdown>
-            {f.citation_indices.length > 0 && (
-              <Text style={styles.citationLine}>
-                Sources:{' '}
-                {f.citation_indices
-                  .filter((i) => i > 0 && i <= output.citations.length)
-                  .map((i) => `[${i}]`)
-                  .join(' ')}
-              </Text>
-            )}
-          </View>
-        ))}
+        {output.findings.map((f: ResearchFindingDoc, idx) => {
+          const validCitations = f.citation_indices.filter(
+            (i) => i > 0 && i <= output.citations.length,
+          );
+          return (
+            <View key={idx} style={styles.finding}>
+              <Text style={styles.findingHeading}>{f.heading}</Text>
+              <Markdown style={markdownStyles}>{f.content}</Markdown>
+              {validCitations.length > 0 && (
+                <View style={styles.citationLine}>
+                  <Text style={styles.citationLineLabel}>Sources: </Text>
+                  {validCitations.map((i, k) => (
+                    <Text
+                      key={`${idx}-${i}-${k}`}
+                      style={styles.citationLink}
+                      onPress={() => scrollToCitation(i)}
+                    >
+                      [{i}]
+                      {k < validCitations.length - 1 ? ' ' : ''}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })}
 
         {output.notes_for_user && (
           <View style={styles.section}>
@@ -64,30 +108,43 @@ export function ResearchOutputDetail({ output, onBack }: Props) {
         {output.citations.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Citations</Text>
-            {output.citations.map((c, i) => (
-              <Pressable
-                key={i}
-                style={styles.citation}
-                onPress={() => {
-                  void Linking.openURL(c.url);
-                }}
-              >
-                <Text style={styles.citationIndex}>[{i + 1}]</Text>
-                <View style={styles.citationBody}>
-                  <Text style={styles.citationTitle} numberOfLines={2}>
-                    {c.title || c.url}
-                  </Text>
-                  {c.snippet ? (
-                    <Text style={styles.citationSnippet} numberOfLines={3}>
-                      {c.snippet}
-                    </Text>
-                  ) : null}
-                  <Text style={styles.citationUrl} numberOfLines={1}>
-                    {c.url}
-                  </Text>
+            {output.citations.map((c, i) => {
+              const idx1 = i + 1;
+              return (
+                <View
+                  key={i}
+                  ref={(node) => {
+                    if (node) citationRefs.current.set(idx1, node);
+                    else citationRefs.current.delete(idx1);
+                  }}
+                  collapsable={false}
+                >
+                  <Pressable
+                    style={styles.citation}
+                    onPress={() => {
+                      // Always navigate using the full URL — the displayed
+                      // hostname is just a UX simplification.
+                      void Linking.openURL(c.url);
+                    }}
+                  >
+                    <Text style={styles.citationIndex}>[{idx1}]</Text>
+                    <View style={styles.citationBody}>
+                      <Text style={styles.citationTitle} numberOfLines={2}>
+                        {c.title || hostnameFor(c.url)}
+                      </Text>
+                      {c.snippet ? (
+                        <Text style={styles.citationSnippet} numberOfLines={3}>
+                          {c.snippet}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.citationUrl} numberOfLines={1}>
+                        {hostnameFor(c.url)}
+                      </Text>
+                    </View>
+                  </Pressable>
                 </View>
-              </Pressable>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -106,8 +163,9 @@ const styles = StyleSheet.create({
   },
   backLabel: { color: '#7aa3d4', fontSize: 15 },
   body: { padding: 16, paddingBottom: 48, gap: 16 },
-  query: { color: '#e8f1ff', fontSize: 22, fontWeight: '600' },
-  timestamp: { color: '#7aa3d4', fontSize: 12 },
+  title: { color: '#e8f1ff', fontSize: 22, fontWeight: '600' },
+  queryLine: { color: '#7aa3d4', fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
+  timestamp: { color: '#7aa3d4', fontSize: 12, marginTop: -8 },
   section: { gap: 6 },
   sectionLabel: {
     color: '#7aa3d4',
@@ -120,7 +178,14 @@ const styles = StyleSheet.create({
   notes: { color: '#cbd9eb', fontSize: 14, lineHeight: 20 },
   finding: { gap: 6 },
   findingHeading: { color: '#e8f1ff', fontSize: 17, fontWeight: '600' },
-  citationLine: { color: '#7aa3d4', fontSize: 12, marginTop: 4 },
+  citationLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  citationLineLabel: { color: '#7aa3d4', fontSize: 12 },
+  citationLink: { color: '#4d8fdb', fontSize: 12, fontWeight: '500' },
   followUp: { color: '#cbd9eb', fontSize: 14, lineHeight: 20 },
   citation: {
     flexDirection: 'row',

@@ -131,6 +131,9 @@ export function ResearchOverlay() {
               >
                 <View style={styles.rowMain}>
                   <Text style={styles.rowTitle} numberOfLines={2}>
+                    {item.title || item.query}
+                  </Text>
+                  <Text style={styles.rowQuery} numberOfLines={2}>
                     {item.query}
                   </Text>
                   <Text style={styles.rowMeta}>
@@ -173,9 +176,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 12,
   },
-  rowMain: { flex: 1, gap: 4 },
-  rowTitle: { color: '#e8f1ff', fontSize: 15, fontWeight: '500' },
-  rowMeta: { color: '#7aa3d4', fontSize: 12 },
+  rowMain: { flex: 1, gap: 3 },
+  rowTitle: { color: '#e8f1ff', fontSize: 15, fontWeight: '600' },
+  rowQuery: { color: '#7aa3d4', fontSize: 12, lineHeight: 16, fontStyle: 'italic' },
+  rowMeta: { color: '#7aa3d4', fontSize: 12, marginTop: 2 },
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',

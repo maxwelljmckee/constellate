@@ -23,6 +23,7 @@ export const researchOutputs = pgTable(
       .notNull()
       .references(() => agentTasks.id, { onDelete: 'restrict' }),
     query: text('query').notNull(),
+    title: text('title').notNull(),
     summary: text('summary').notNull(),
     findings: jsonb('findings').notNull(),
     citations: jsonb('citations').notNull().default(sql`'[]'::jsonb`),

@@ -33,7 +33,7 @@ const TYPE_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']> 
   todo: 'checkbox-outline',
 };
 
-type WikiView = 'folders' | 'type' | 'page';
+type WikiView = 'folders' | 'type' | 'todo-bucket' | 'page';
 
 export function WikiOverlay() {
   const ready = useRxdbReady();
@@ -41,6 +41,7 @@ export function WikiOverlay() {
   const [view, setView] = useState<WikiView>('folders');
   const [activeType, setActiveType] = useState<string | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
+  const [activeBucketId, setActiveBucketId] = useState<string | null>(null);
 
   const groups = useMemo(() => {
     const m = new Map<string, WikiPageDoc[]>();
@@ -64,10 +65,19 @@ export function WikiOverlay() {
     setView('page');
   }
 
+  function openBucket(bucketId: string) {
+    setActiveBucketId(bucketId);
+    setView('todo-bucket');
+  }
+
   function back() {
     if (view === 'page') {
-      setView('type');
+      // Back from a page goes to whichever list view we drilled in from.
+      setView(activeBucketId ? 'todo-bucket' : 'type');
       setActivePageId(null);
+    } else if (view === 'todo-bucket') {
+      setView('type');
+      setActiveBucketId(null);
     } else if (view === 'type') {
       setView('folders');
       setActiveType(null);
@@ -76,6 +86,12 @@ export function WikiOverlay() {
 
   const activePage = activePageId ? pages.find((p) => p.id === activePageId) ?? null : null;
   const typeItems = activeType ? groups.find((g) => g.type === activeType)?.items ?? [] : [];
+  const activeBucket = activeBucketId
+    ? pages.find((p) => p.id === activeBucketId) ?? null
+    : null;
+  const bucketChildren = activeBucketId
+    ? pages.filter((p) => p.parent_page_id === activeBucketId)
+    : [];
 
   return (
     <PluginOverlay kind="wiki" title="Wiki">
@@ -118,10 +134,48 @@ export function WikiOverlay() {
             <Ionicons name="chevron-back" size={20} color="#7aa3d4" />
             <Text style={styles.backLabel}>Wiki</Text>
           </Pressable>
+          {activeType === 'todo' ? (
+            <TodoBucketFolders
+              items={typeItems}
+              onOpenBucket={openBucket}
+            />
+          ) : (
+            <FlatList
+              data={typeItems}
+              keyExtractor={(p) => p.id}
+              contentContainerStyle={styles.list}
+              renderItem={({ item }) => (
+                <Pressable style={styles.row} onPress={() => openPage(item.id)}>
+                  <View style={styles.pageRowMain}>
+                    <Text style={styles.pageRowTitle}>{item.title}</Text>
+                    <Text style={styles.pageRowAbstract} numberOfLines={2}>
+                      {item.agent_abstract}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#3f5a83" />
+                </Pressable>
+              )}
+            />
+          )}
+        </View>
+      ) : view === 'todo-bucket' && activeBucket ? (
+        <View style={styles.flex}>
+          <Pressable style={styles.backRow} onPress={back}>
+            <Ionicons name="chevron-back" size={20} color="#7aa3d4" />
+            <Text style={styles.backLabel}>Todos</Text>
+          </Pressable>
+          <Text style={styles.bucketTitle}>
+            {TODO_BUCKET_LABELS[activeBucket.slug] ?? activeBucket.title}
+          </Text>
           <FlatList
-            data={typeItems}
+            data={bucketChildren}
             keyExtractor={(p) => p.id}
             contentContainerStyle={styles.list}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No todos here yet.</Text>
+              </View>
+            }
             renderItem={({ item }) => (
               <Pressable style={styles.row} onPress={() => openPage(item.id)}>
                 <View style={styles.pageRowMain}>
@@ -139,6 +193,67 @@ export function WikiOverlay() {
         <WikiPageDetail page={activePage} onBack={back} />
       ) : null}
     </PluginOverlay>
+  );
+}
+
+// Bucket slugs for todos. Order = display order in the nested list.
+const TODO_BUCKET_SLUGS = ['todos/todo', 'todos/in-progress', 'todos/done', 'todos/archived'] as const;
+const TODO_BUCKET_LABELS: Record<string, string> = {
+  'todos/todo': 'To do',
+  'todos/in-progress': 'In progress',
+  'todos/done': 'Done',
+  'todos/archived': 'Archived',
+};
+
+// Each todo bucket renders as a drillable folder row (synthetic
+// directory). Tapping a bucket pushes a new view that lists only that
+// bucket's children. Bucket pages themselves and the `todos` root page
+// are NOT shown as items — they're structural, not content.
+function TodoBucketFolders({
+  items,
+  onOpenBucket,
+}: {
+  items: WikiPageDoc[];
+  onOpenBucket: (bucketId: string) => void;
+}) {
+  const bucketBySlug = new Map(
+    items
+      .filter((p) => (TODO_BUCKET_SLUGS as readonly string[]).includes(p.slug))
+      .map((b) => [b.slug, b]),
+  );
+
+  const childCountByBucketId = new Map<string, number>();
+  for (const p of items) {
+    if (!p.parent_page_id) continue;
+    if ((TODO_BUCKET_SLUGS as readonly string[]).includes(p.slug)) continue;
+    if (p.slug === 'todos') continue;
+    childCountByBucketId.set(
+      p.parent_page_id,
+      (childCountByBucketId.get(p.parent_page_id) ?? 0) + 1,
+    );
+  }
+
+  return (
+    <FlatList
+      data={TODO_BUCKET_SLUGS as readonly string[]}
+      keyExtractor={(slug) => slug}
+      contentContainerStyle={styles.list}
+      renderItem={({ item: slug }) => {
+        const bucket = bucketBySlug.get(slug);
+        if (!bucket) return null;
+        const count = childCountByBucketId.get(bucket.id) ?? 0;
+        return (
+          <Pressable style={styles.row} onPress={() => onOpenBucket(bucket.id)}>
+            <View style={styles.rowIcon}>
+              <Ionicons name="folder-outline" size={20} color="#7aa3d4" />
+            </View>
+            <Text style={styles.rowLabel}>{TODO_BUCKET_LABELS[slug]}</Text>
+            <Text style={styles.rowCount}>{count}</Text>
+            <Ionicons name="chevron-forward" size={18} color="#3f5a83" />
+          </Pressable>
+        );
+      }}
+    />
   );
 }
 
@@ -181,4 +296,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   backLabel: { color: '#7aa3d4', fontSize: 15 },
+  bucketTitle: {
+    color: '#e8f1ff',
+    fontSize: 22,
+    fontWeight: '600',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
 });

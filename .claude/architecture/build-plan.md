@@ -220,8 +220,9 @@ Roughly half-day of admin work, mostly waiting on confirmation emails.
 
 **Goal:** all 4 MVP plugin tiles functional.
 
+- ⏺️ **Decision point: introduce `todos` sidecar table** (per backlog "First-class entity sidecars" — typed columns for `due_date`, `priority`, `recurrence_rule`, `completed_at` joined 1:1 to `wiki_pages` on `page_id`). Triggered by the first feature here that needs an indexed query against a typed column (e.g. "due this week" filtering). Until then todos can ride pure wiki_pages + frontmatter; the moment that breaks, land the sidecar.
 - ⏺️ Mobile: Todos plugin overlay
-  - Projection over `wiki_pages WHERE type='todo'` joined with `agent_tasks`
+  - Projection over `wiki_pages WHERE type='todo'` joined with `agent_tasks` (and `todos` sidecar once it exists)
   - Status tabs (todo / in-progress / done / archived)
   - Check-off → reparent to `done` bucket (write to `wiki_pages.parent_page_id`)
   - Show agent-task status for agent-assigned todos (running / succeeded / failed)

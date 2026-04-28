@@ -37,6 +37,10 @@ const FindingZ = z.object({
 
 export const ResearchOutputZ = z.object({
   query: z.string(),
+  // Short user-facing label (~6-10 words). Distinct from query — query holds
+  // the verbatim ask; title is a tight summary used as the primary heading
+  // in lists and detail views.
+  title: z.string().min(1),
   summary: z.string().min(1),
   findings: z.array(FindingZ).min(1),
   citations: z
@@ -89,6 +93,7 @@ If the payload's preferred_depth is 'detailed':
 - citation_indices reference the global \`citations\` array (1-indexed; 0 reserved for "no citation")
 - Don't fabricate citations — if grounded search returned nothing useful, the \`notes_for_user\` field says so explicitly
 - Domain diversity preferred where possible
+- **Each citation's \`url\` MUST be the full article URL from grounded search results** (e.g. \`https://nytimes.com/2026/04/28/dining/italian-restaurants-manhattan.html\`), NOT the publisher's homepage (e.g. \`https://nytimes.com\`). The user clicks these links to read the actual cited source — bare domain roots are useless. If a particular finding came from a publisher's homepage with no specific article URL, omit that citation entirely rather than emit a useless root link.
 
 # Refusal / out-of-scope
 - If the query isn't actually researchable (e.g. "research my own goals"), produce zero findings and a notes_for_user explaining why
@@ -100,6 +105,7 @@ Output ONLY a single JSON object with EXACTLY these top-level keys — no preamb
 
 {
   "query": "<echo the input query verbatim>",
+  "title": "<6-10 word abbreviated title for this research; capitalized like a headline; no trailing punctuation. e.g. 'The Enlightenment and its influence' or 'Italian restaurants in lower Manhattan'>",
   "summary": "<2-4 sentence executive summary>",
   "findings": [
     {
@@ -166,6 +172,27 @@ export async function runResearch(payload: ResearchPayload): Promise<ResearchHan
   const parsed = JSON.parse(text.slice(start, end + 1));
   // Echo the input query if the model dropped it (defensive).
   if (!parsed.query) parsed.query = payload.query;
+  // Fallback title if the model omitted it: truncate the query.
+  if (!parsed.title || typeof parsed.title !== 'string') {
+    parsed.title = payload.query.length > 60
+      ? `${payload.query.slice(0, 60).trimEnd()}…`
+      : payload.query;
+  }
+
+  // Reconcile citations against the SDK's groundingMetadata.groundingChunks.
+  // Models often emit publisher-domain URLs in their free-form output even
+  // though the grounding chunks they used carry the full article URL. Walk
+  // the model's citations array and upgrade each url to the full URL from
+  // the matching grounding chunk (matched by hostname). Any model citation
+  // whose URL can't be upgraded to a deep URL is dropped — bare domain
+  // roots are useless for cross-linking.
+  const groundingChunks = extractGroundingChunks(resp);
+  if (Array.isArray(parsed.citations)) {
+    parsed.citations = reconcileCitations(parsed.citations, groundingChunks);
+  } else {
+    parsed.citations = [];
+  }
+
   const validated = ResearchOutputZ.parse(parsed);
 
   // Token usage — best-effort extraction. Defaults to 0 if absent.
@@ -180,4 +207,111 @@ export async function runResearch(payload: ResearchPayload): Promise<ResearchHan
     tokensIn,
     tokensOut,
   };
+}
+
+interface GroundingChunkWeb {
+  uri?: string;
+  title?: string;
+}
+
+interface GroundingMeta {
+  candidates?: Array<{
+    groundingMetadata?: {
+      groundingChunks?: Array<{ web?: GroundingChunkWeb }>;
+    };
+  }>;
+}
+
+function extractGroundingChunks(resp: unknown): GroundingChunkWeb[] {
+  const meta = resp as GroundingMeta;
+  const chunks = meta.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  return chunks.map((c) => c.web ?? {}).filter((w) => typeof w.uri === 'string' && w.uri.length > 0);
+}
+
+function hostname(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function isDeepUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    // Anything beyond a `/` or empty path counts as deep enough.
+    return u.pathname !== '/' && u.pathname.length > 1;
+  } catch {
+    return false;
+  }
+}
+
+interface RawCitation {
+  url?: unknown;
+  title?: unknown;
+  snippet?: unknown;
+}
+
+function reconcileCitations(
+  modelCitations: RawCitation[],
+  groundingChunks: GroundingChunkWeb[],
+): Array<{ url: string; title: string; snippet: string }> {
+  // Index grounding chunks by hostname. Multiple chunks per host are
+  // possible — keep all so we can pick a stable one per model citation.
+  const chunksByHost = new Map<string, GroundingChunkWeb[]>();
+  for (const chunk of groundingChunks) {
+    if (!chunk.uri) continue;
+    const host = hostname(chunk.uri);
+    if (!host) continue;
+    const list = chunksByHost.get(host) ?? [];
+    list.push(chunk);
+    chunksByHost.set(host, list);
+  }
+
+  // Track which grounding chunk uris are already claimed so we don't bind
+  // multiple model citations to the same article.
+  const claimed = new Set<string>();
+
+  const upgraded: Array<{ url: string; title: string; snippet: string }> = [];
+  for (const c of modelCitations) {
+    const rawUrl = typeof c.url === 'string' ? c.url : '';
+    const rawTitle = typeof c.title === 'string' ? c.title : '';
+    const rawSnippet = typeof c.snippet === 'string' ? c.snippet : '';
+
+    // If the model already returned a deep URL, keep it.
+    if (rawUrl && isDeepUrl(rawUrl)) {
+      upgraded.push({ url: rawUrl, title: rawTitle, snippet: rawSnippet });
+      continue;
+    }
+
+    // Otherwise try to find an unclaimed grounding chunk on the same host.
+    const host = hostname(rawUrl) ?? rawUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]?.toLowerCase() ?? '';
+    const candidates = chunksByHost.get(host) ?? [];
+    const match = candidates.find((c) => c.uri && !claimed.has(c.uri));
+    if (match?.uri) {
+      claimed.add(match.uri);
+      upgraded.push({
+        url: match.uri,
+        title: rawTitle || match.title || '',
+        snippet: rawSnippet,
+      });
+      continue;
+    }
+
+    // No deep URL available anywhere — drop. Bare-domain citations are
+    // useless for cross-linking; skipping them is honest.
+    logger.warn(
+      { rawUrl, host },
+      'research handler: dropped citation with no deep URL available',
+    );
+  }
+
+  // Append any grounding chunks the model didn't cite explicitly. They
+  // were used for grounding so they belong in the sources panel.
+  for (const chunk of groundingChunks) {
+    if (!chunk.uri || claimed.has(chunk.uri)) continue;
+    upgraded.push({ url: chunk.uri, title: chunk.title ?? '', snippet: '' });
+  }
+
+  return upgraded;
 }

@@ -114,6 +114,7 @@ export interface ResearchOutputDoc {
   user_id: string;
   agent_tasks_id: string;
   query: string;
+  title: string;
   summary: string;
   findings: ResearchFindingDoc[];
   citations: ResearchCitationDoc[];
@@ -135,6 +136,7 @@ export const researchOutputSchema: RxJsonSchema<ResearchOutputDoc> = {
     user_id: { type: 'string', maxLength: 36 },
     agent_tasks_id: { type: 'string', maxLength: 36 },
     query: { type: 'string' },
+    title: { type: 'string' },
     summary: { type: 'string' },
     findings: { type: 'array' },
     citations: { type: 'array' },
@@ -143,8 +145,15 @@ export const researchOutputSchema: RxJsonSchema<ResearchOutputDoc> = {
     model_used: { type: 'string' },
     tokens_in: { type: 'number', minimum: 0 },
     tokens_out: { type: 'number', minimum: 0 },
-    // Indexed for ORDER BY generated_at DESC.
-    generated_at: { type: 'string', maxLength: 32 },
+    // Indexed for ORDER BY generated_at DESC. Validate ISO 8601 — a row
+    // arriving without a parseable timestamp is a real bug, surface it
+    // rather than silently masking with a render-time fallback.
+    generated_at: {
+      type: 'string',
+      maxLength: 32,
+      minLength: 20,
+      pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}',
+    },
     tombstoned_at: { type: ['string', 'null'] },
   },
   required: [
@@ -152,6 +161,7 @@ export const researchOutputSchema: RxJsonSchema<ResearchOutputDoc> = {
     'user_id',
     'agent_tasks_id',
     'query',
+    'title',
     'summary',
     'findings',
     'citations',

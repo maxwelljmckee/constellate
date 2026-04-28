@@ -29,6 +29,15 @@ interface SpawnResearchBody {
   context_summary?: string;
 }
 
+// Trim the query to a sensible placeholder length without breaking mid-word.
+function truncateForTitle(s: string, max = 60): string {
+  const trimmed = s.trim();
+  if (trimmed.length <= max) return trimmed;
+  const slice = trimmed.slice(0, max);
+  const lastSpace = slice.lastIndexOf(' ');
+  return `${(lastSpace > 30 ? slice.slice(0, lastSpace) : slice).trimEnd()}…`;
+}
+
 @Controller('tasks')
 @UseGuards(SupabaseAuthGuard)
 export class TasksController {
@@ -61,8 +70,10 @@ export class TasksController {
         throw new BadRequestException('todos/todo bucket missing — user not seeded');
       }
 
-      // Create the todo wiki page tracking this research request.
-      const todoTitle = `Research: ${query.slice(0, 100)}`;
+      // Create the todo wiki page tracking this research request. The title
+      // here is a placeholder — the worker handler will overwrite it with
+      // the LLM-generated abbreviated title once the research completes.
+      const placeholderTitle = `Research: ${truncateForTitle(query)}`;
       const [todoRow] = await tx
         .insert(wikiPages)
         .values({
@@ -71,7 +82,7 @@ export class TasksController {
           type: 'todo',
           slug: `todos/research-${Date.now()}`,
           parentPageId: todoBucket.id,
-          title: todoTitle,
+          title: placeholderTitle,
           agentAbstract: `Research request: ${query}`,
         })
         .returning({ id: wikiPages.id });

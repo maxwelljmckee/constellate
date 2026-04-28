@@ -41,6 +41,7 @@ export async function commitResearchOutput(args: CommitArgs): Promise<CommitResu
         userId,
         agentTasksId: agentTaskId,
         query: output.query,
+        title: output.title,
         summary: output.summary,
         findings: output.findings,
         citations: output.citations,
@@ -49,6 +50,11 @@ export async function commitResearchOutput(args: CommitArgs): Promise<CommitResu
         modelUsed,
         tokensIn,
         tokensOut,
+        // Explicit timestamp at insert — defense in depth on top of the
+        // schema's defaultNow(). Removes any chance of the column being
+        // ambiguous mid-pipeline; the Date here is what gets serialized to
+        // ISO and replicated through Supabase to the client.
+        generatedAt: new Date(),
       })
       .returning({ id: researchOutputs.id });
     if (!row) throw new Error('research_outputs insert returned no row');
@@ -79,7 +85,9 @@ export async function commitResearchOutput(args: CommitArgs): Promise<CommitResu
       })
       .where(eq(agentTasks.id, agentTaskId));
 
-    // 4. Reparent the originating todo page → todos/done.
+    // 4. Reparent the originating todo page → todos/done, AND replace its
+    //    placeholder title with the LLM-generated abbreviated title (kept
+    //    user-friendly and consistent with the artifact's title).
     const [doneBucket] = await tx
       .select({ id: wikiPages.id })
       .from(wikiPages)
@@ -92,12 +100,16 @@ export async function commitResearchOutput(args: CommitArgs): Promise<CommitResu
         ),
       )
       .limit(1);
-    if (doneBucket) {
-      await tx
-        .update(wikiPages)
-        .set({ parentPageId: doneBucket.id, updatedAt: new Date() })
-        .where(eq(wikiPages.id, todoPageId));
-    }
+    const todoTitle = `Research: ${output.title}`;
+    await tx
+      .update(wikiPages)
+      .set({
+        title: todoTitle,
+        agentAbstract: `Research: ${output.title}`,
+        ...(doneBucket ? { parentPageId: doneBucket.id } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(wikiPages.id, todoPageId));
 
     // 5. Usage event.
     await tx.insert(usageEvents).values({
