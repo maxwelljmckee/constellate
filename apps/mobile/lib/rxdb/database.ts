@@ -19,7 +19,13 @@ import {
   wikiSectionSchema,
 } from './schemas';
 
-addRxPlugin(RxDBDevModePlugin);
+// RxDB's dev-mode plugin explicitly throws if loaded in production (deliberate
+// guard — so devs notice they shipped a debug-only plugin). Metro replaces
+// __DEV__ with `false` in release bundles, so this whole call gets dead-code-
+// eliminated from TestFlight / App Store builds.
+if (__DEV__) {
+  addRxPlugin(RxDBDevModePlugin);
+}
 addRxPlugin(RxDBQueryBuilderPlugin);
 
 export type WikiPageCollection = RxCollection<WikiPageDoc>;

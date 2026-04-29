@@ -2,7 +2,7 @@
   "expo": {
     "name": "Audri",
     "slug": "audri",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "audri",
@@ -10,13 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.audri.app",
-      "appleTeamId": "ZKPW88L5T6",
+      "bundleIdentifier": "com.talktoaudri.audri",
+      "buildNumber": "1",
+      "appleTeamId": "82NRH8Q9SJ",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Audri needs microphone access so you can talk with it during voice calls.",
-        "UIBackgroundModes": [
-          "audio"
-        ]
+        "NSMicrophoneUsageDescription": "Audri uses the microphone to listen during voice conversations.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -28,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.audri.app"
+      "package": "com.talktoaudri.audri"
     },
     "web": {
       "output": "static",
@@ -54,6 +53,18 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2db2f14b-4d3b-448b-acba-9144450f3eeb"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2db2f14b-4d3b-448b-acba-9144450f3eeb"
     }
   }
 }

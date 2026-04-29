@@ -19,7 +19,11 @@
     "db:generate": "pnpm --filter @audri/server db:generate",
     "db:migrate": "pnpm --filter @audri/server db:migrate",
     "db:push": "pnpm --filter @audri/server db:push",
-    "db:studio": "pnpm --filter @audri/server db:studio"
+    "db:studio": "pnpm --filter @audri/server db:studio",
+    "testflight": "pnpm --filter @audri/mobile testflight",
+    "build:ios:preview": "pnpm --filter @audri/mobile build:ios:preview",
+    "build:ios:production": "pnpm --filter @audri/mobile build:ios:production",
+    "submit:ios": "pnpm --filter @audri/mobile submit:ios"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
