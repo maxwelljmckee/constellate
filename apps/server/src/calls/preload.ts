@@ -10,7 +10,7 @@
 // recently-updated wiki pages — those are richer than call summaries since
 // they reflect what was actually extracted and considered worth remembering.
 
-import { and, db, desc, eq, isNull, ne, sql } from '@audri/shared/db';
+import { and, db, desc, eq, inArray, isNull, ne, sql } from '@audri/shared/db';
 import { callTranscripts, wikiPages, wikiSections } from '@audri/shared/db';
 
 const RECENT_PAGES_LIMIT = 8;
@@ -101,7 +101,12 @@ async function fetchPagesByPrefix(
         eq(wikiPages.userId, userId),
         eq(wikiPages.scope, scope),
         isNull(wikiSections.tombstonedAt),
-        sql`${wikiPages.slug} = ANY(${slugs})`,
+        // inArray builds `slug IN ($1, $2, …)` with proper parameter binding.
+        // The previous `sql\`${slug} = ANY(${slugs})\`` form bound the JS
+        // array as a single text parameter; postgres-js then complained
+        // "op ANY/ALL (array) requires array on right side" — Drizzle
+        // doesn't auto-spread arrays inside the sql template tag.
+        inArray(wikiPages.slug, slugs),
       ),
     )
     .orderBy(wikiSections.sortOrder);
