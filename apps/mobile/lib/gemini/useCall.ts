@@ -5,15 +5,13 @@
 // model audio → barge-in possible → end() → flush + close + POST /end.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState } from 'react-native';
 import { AudioManager } from 'react-native-audio-api';
 import {
   type CallSnapshot,
   clearCallSnapshot,
-  recoverCall,
   saveCallSnapshot,
 } from '../callRecovery';
-import { captureClientError } from '../sentry';
 import { supabase } from '../supabase';
 import { useCallStore } from '../useCallStore';
 import { type AudioInputHandle, createAudioInput } from './audio-input';
@@ -225,39 +223,18 @@ export function useCall(): UseCallResult {
       input.onFrame((b64) => session.sendAudio(b64));
       await input.start();
 
-      // 6. AppState handler. When iOS suspends us the WebSocket is going to
-      // die anyway — get ahead of it: tear down cleanly and POST /end with
-      // end_reason='app_backgrounded' so the transcript is preserved and
-      // ingestion can run.
-      appStateSubRef.current = AppState.addEventListener(
-        'change',
-        (state: AppStateStatus) => {
-          if (state !== 'background' && state !== 'inactive') return;
-          if (useCallStore.getState().status !== 'connected') return;
-          const sessionId = sessionIdRef.current;
-          const startedAt = startedAtRef.current;
-          if (!sessionId || !startedAt) return;
-          const snapshot: CallSnapshot = {
-            sessionId,
-            startedAt: startedAt.toISOString(),
-            lastTouched: new Date().toISOString(),
-            transcript: transcriptRef.current.getAll(),
-            callType: callTypeRef.current,
-          };
-          generationRef.current++; // invalidate any in-flight start
-          teardown();
-          useCallStore.getState().reset();
-          void recoverCall(snapshot, 'app_backgrounded')
-            .then(() => clearCallSnapshot())
-            .catch((err) => {
-              captureClientError('call-background-recovery', err, {
-                sessionId: snapshot.sessionId,
-                turnCount: snapshot.transcript.length,
-              });
-              // Snapshot stays on disk — the launch sweep will retry.
-            });
-        },
-      );
+      // 6. Backgrounded calls KEEP RUNNING — Audri behaves like a regular
+      // phone call. iOS keeps our audio session + WebSocket alive via the
+      // `UIBackgroundModes: ["audio"]` entitlement in app.json. Only the
+      // user's explicit End-Call button (or a hard failure: force-quit,
+      // crash, network drop) terminates the session.
+      //
+      // The snapshot keeps getting refreshed via persistSnapshot() on every
+      // transcript change, so a hard failure mid-call still recovers via
+      // the launch sweep. Backgrounding alone doesn't trigger anything.
+      appStateSubRef.current = AppState.addEventListener('change', () => {
+        // Intentional no-op. Background-audio entitlement does the work.
+      });
 
       // 7. Kick the model off. The cue routes through the system prompt — for
       // onboarding it triggers the structured self-intro + opener; for generic

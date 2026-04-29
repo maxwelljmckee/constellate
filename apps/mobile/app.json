@@ -15,7 +15,8 @@
       "appleTeamId": "82NRH8Q9SJ",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Audri uses the microphone to listen during voice conversations.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
